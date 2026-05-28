@@ -400,7 +400,7 @@ function renderAdminMatches() {
   `;
 }
 
-const CUP_PHASE_NAMES = ['Fase Previa', 'Octavos de Final', 'Cuartos de Final', 'Semifinal', 'Final'];
+const CUP_PHASE_NAMES = ['Ronda 1', 'Ronda 2', 'Semifinal', 'Gran Final'];
 
 function loadAdminRounds() {
   const tournament = document.getElementById('match-tournament')?.value;

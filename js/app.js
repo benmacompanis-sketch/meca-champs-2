@@ -10,11 +10,10 @@ const TOURNAMENT_NAMES = {
 };
 
 const CUP_PHASES = [
-  { key: 'previa',  label: 'FASE PREVIA',       i: 0 },
-  { key: 'octavos', label: 'OCTAVOS DE FINAL',   i: 1 },
-  { key: 'cuartos', label: 'CUARTOS DE FINAL',   i: 2 },
-  { key: 'semis',   label: 'SEMIFINALES',         i: 3 },
-  { key: 'final',   label: 'GRAN FINAL',          i: 4 },
+  { key: 'r1',    label: 'RONDA 1 · TODOS LOS EQUIPOS', i: 0 },
+  { key: 'r2',    label: 'RONDA 2',                      i: 1 },
+  { key: 'semis', label: 'SEMIFINALES',                  i: 2 },
+  { key: 'final', label: 'GRAN FINAL',                   i: 3 },
 ];
 
 function navigate(view, extra) {
@@ -173,57 +172,111 @@ function renderCopa() {
 function renderCupBracket() {
   const data = getData();
   const phases = data.matches.copa;
+  const flatAll = phases.flat();
 
-  return CUP_PHASES.map(ph => {
+  const bronzeMatch = flatAll.find(m => m.isBronze);
+  const bronzeWinner = bronzeMatch?.played
+    ? getTeamById(bronzeMatch.homeScore > bronzeMatch.awayScore
+        ? bronzeMatch.homeTeamId : bronzeMatch.awayTeamId)
+    : null;
+
+  const phasesHtml = CUP_PHASES.map(ph => {
     const matches = phases[ph.i] || [];
     return `
       <div class="cup-phase">
         <div class="cup-phase-header"><span>${ph.label}</span></div>
         <div class="cup-phase-matches">
-          ${matches.map(m => renderCupMatchCard(m)).join('')}
+          ${matches.map(m => renderCupMatchCard(m, flatAll)).join('')}
         </div>
       </div>
     `;
   }).join('');
+
+  const bronzeName = bronzeWinner
+    ? escHtml(bronzeWinner.name)
+    : bronzeMatch?.homeTeamId && bronzeMatch?.awayTeamId
+      ? `Ganador de: ${escHtml(getTeamById(bronzeMatch.homeTeamId)?.name || '?')} vs ${escHtml(getTeamById(bronzeMatch.awayTeamId)?.name || '?')}`
+      : 'A DEFINIR';
+
+  const bronzeHtml = `
+    <div class="cup-phase">
+      <div class="cup-phase-header" style="border-left-color:var(--yellow)"><span>🥉 3ER LUGAR</span></div>
+      <div class="cup-phase-matches">
+        <div class="cup-match-card ${bronzeWinner ? 'cup-match-played' : 'cup-match-tbd-card'}">
+          <div class="cup-team ${bronzeWinner ? 'cup-winner' : 'cup-tbd'}">
+            <div class="cup-team-left">
+              ${bronzeWinner?.shield ? `<img src="${bronzeWinner.shield}" class="cup-shield" alt="">` : `<div class="shield-placeholder-sm">${bronzeWinner ? bronzeWinner.name.charAt(0) : '?'}</div>`}
+              <span class="cup-team-name">${bronzeName}</span>
+            </div>
+          </div>
+          <div class="cup-divider"></div>
+          <div class="cup-team cup-tbd">
+            <div class="cup-team-left">
+              <span class="cup-team-name" style="font-size:.72rem;color:var(--text-muted)">Pasa directo — no juega Semis</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  return phasesHtml + bronzeHtml;
 }
 
-function renderCupMatchCard(match) {
+function getCupSourceNames(fromTieId, allCupMatches) {
+  const src = allCupMatches.find(m => m.tieId === fromTieId);
+  if (!src) return null;
+  const t1 = src.homeTeamId ? getTeamById(src.homeTeamId) : null;
+  const t2 = src.awayTeamId ? getTeamById(src.awayTeamId) : null;
+  return { t1Name: t1?.name, t2Name: t2?.name };
+}
+
+function renderCupMatchCard(match, allCupMatches) {
   const home = match.homeTeamId ? getTeamById(match.homeTeamId) : null;
   const away = match.awayTeamId ? getTeamById(match.awayTeamId) : null;
-  const tbd  = !match.homeTeamId || !match.awayTeamId;
   const played = match.played;
-
-  const isWinner = (side) => played && (
-    side === 'home' ? match.homeScore > match.awayScore :
-                      match.awayScore > match.homeScore
-  );
   const isDraw = played && match.homeScore === match.awayScore;
+  const tbd = !match.homeTeamId || !match.awayTeamId;
 
-  const teamBlock = (team, side) => {
-    const name = team ? escHtml(team.name) : 'A DEFINIR';
-    const score = played ? (side === 'home' ? match.homeScore : match.awayScore) : '';
-    const win = isWinner(side);
-    return `
-      <div class="cup-team ${!team ? 'cup-tbd' : ''} ${win ? 'cup-winner' : ''}">
-        <div class="cup-team-left">
-          ${team?.shield
-            ? `<img src="${team.shield}" class="cup-shield" alt="">`
-            : `<div class="shield-placeholder-sm">${team ? team.name.charAt(0) : '?'}</div>`}
-          <span class="cup-team-name">${name}</span>
-        </div>
-        ${played ? `<span class="cup-team-score ${win ? 'score-win' : ''}">${score}</span>` : ''}
-      </div>
-    `;
+  const isWin = (side) => played &&
+    (side === 'home' ? match.homeScore > match.awayScore : match.awayScore > match.homeScore);
+
+  const teamBlock = (team, fromTie, side) => {
+    if (team) {
+      const win = isWin(side);
+      const score = side === 'home' ? match.homeScore : match.awayScore;
+      return `
+        <div class="cup-team ${win ? 'cup-winner' : ''}">
+          <div class="cup-team-left">
+            ${team.shield
+              ? `<img src="${team.shield}" class="cup-shield" alt="">`
+              : `<div class="shield-placeholder-sm">${team.name.charAt(0)}</div>`}
+            <span class="cup-team-name">${escHtml(team.name)}</span>
+          </div>
+          ${played ? `<span class="cup-team-score ${win ? 'score-win' : ''}">${score}</span>` : ''}
+        </div>`;
+    }
+    if (fromTie && allCupMatches) {
+      const src = getCupSourceNames(fromTie, allCupMatches);
+      if (src?.t1Name && src?.t2Name) {
+        return `
+          <div class="cup-team cup-tbd">
+            <div class="cup-team-left cup-tbd-source">
+              <span class="cup-tbd-label">Ganador de</span>
+              <span class="cup-tbd-names">${escHtml(src.t1Name)} <small>vs</small> ${escHtml(src.t2Name)}</span>
+            </div>
+          </div>`;
+      }
+    }
+    return `<div class="cup-team cup-tbd"><div class="cup-team-left"><span class="cup-team-name">A DEFINIR</span></div></div>`;
   };
 
   return `
-    <div class="cup-match-card ${played ? 'cup-match-played' : ''} ${tbd ? 'cup-match-tbd' : ''} ${isDraw && played ? 'cup-match-draw' : ''}">
-      ${teamBlock(home, 'home')}
+    <div class="cup-match-card ${played ? 'cup-match-played' : ''} ${tbd ? 'cup-match-tbd-card' : ''} ${isDraw && played ? 'cup-match-draw' : ''}">
+      ${teamBlock(home, match.homeFromTie, 'home')}
       <div class="cup-divider"></div>
-      ${teamBlock(away, 'away')}
-      ${isDraw && played ? '<div class="cup-draw-note">⚠ Empate — sin ganador</div>' : ''}
-    </div>
-  `;
+      ${teamBlock(away, match.awayFromTie, 'away')}
+      ${isDraw && played ? '<div class="cup-draw-note">⚠ Empate — ingresá un ganador</div>' : ''}
+    </div>`;
 }
 
 function bindTabEvents() {

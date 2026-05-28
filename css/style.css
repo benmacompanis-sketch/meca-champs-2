@@ -1625,7 +1625,7 @@ body::after {
 }
 .cup-match-card:hover { border-color: var(--border2); }
 .cup-match-card.cup-match-played { border-color: rgba(0,212,255,.3); }
-.cup-match-card.cup-match-tbd { opacity: .55; }
+.cup-match-card.cup-match-tbd-card { opacity: .6; }
 .cup-match-card.cup-match-draw { border-color: var(--yellow); }
 
 .cup-team {
@@ -1650,6 +1650,24 @@ body::after {
 .cup-shield { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
 
 .cup-divider { height: 1px; background: var(--border); margin: 0 .75rem; }
+
+.cup-tbd-source {
+  flex-direction: column;
+  align-items: flex-start !important;
+  gap: .1rem;
+}
+.cup-tbd-label {
+  font-size: .65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.cup-tbd-names {
+  font-size: .78rem;
+  color: var(--cyan);
+  font-weight: 600;
+}
+.cup-tbd-names small { color: var(--text-muted); font-size: .7rem; }
 
 .cup-draw-note {
   font-size: .72rem; color: var(--yellow);

@@ -77,49 +77,42 @@ function mkCupMatch(id, homeTeamId, awayTeamId, phase, tieId, opts) {
   }, opts || {});
 }
 
-// Returns [previa[], octavos[], cuartos[], semis[], final[]]
+// Returns [r1[], r2[], semis[], final[]]
+// All 20 teams play in R1 (10 matches). R2 pairs R1 winners (5 matches).
+// 4 of 5 R2 winners play Semis; 5th R2 winner (isBronze) gets 3rd place automatically.
 function generateCupBracket(teamIds) {
   const t = shuffle([...teamIds]);
   let mc = 0;
   const nid = ph => `c_${ph}_${mc++}`;
 
-  // Previa: 4 ties (teams[0-7])
-  const previa = [
-    mkCupMatch(nid('pv'), t[0], t[1], 'previa', 'pv0'),
-    mkCupMatch(nid('pv'), t[2], t[3], 'previa', 'pv1'),
-    mkCupMatch(nid('pv'), t[4], t[5], 'previa', 'pv2'),
-    mkCupMatch(nid('pv'), t[6], t[7], 'previa', 'pv3'),
+  // Ronda 1: all 20 teams play (10 matches, draw-determined)
+  const r1 = [];
+  for (let i = 0; i < 20; i += 2) {
+    r1.push(mkCupMatch(nid('r1'), t[i], t[i + 1], 'r1', `r1_${i / 2}`));
+  }
+  // r1[0]='r1_0' ... r1[9]='r1_9'
+
+  // Ronda 2: 5 matches (pairs of R1 winners)
+  // r2_4 winner auto-advances to 3rd place (isBronze) — does NOT play Semis
+  const r2 = [
+    mkCupMatch(nid('r2'), null, null, 'r2', 'r2_0', { homeFromTie: 'r1_0', awayFromTie: 'r1_1', pending: true }),
+    mkCupMatch(nid('r2'), null, null, 'r2', 'r2_1', { homeFromTie: 'r1_2', awayFromTie: 'r1_3', pending: true }),
+    mkCupMatch(nid('r2'), null, null, 'r2', 'r2_2', { homeFromTie: 'r1_4', awayFromTie: 'r1_5', pending: true }),
+    mkCupMatch(nid('r2'), null, null, 'r2', 'r2_3', { homeFromTie: 'r1_6', awayFromTie: 'r1_7', pending: true }),
+    mkCupMatch(nid('r2'), null, null, 'r2', 'r2_4', { homeFromTie: 'r1_8', awayFromTie: 'r1_9', pending: true, isBronze: true }),
   ];
 
-  // Octavos: 4 seeded pairs (teams[8-15]) + 4 seeded vs previa winner (teams[16-19])
-  const octavos = [
-    mkCupMatch(nid('o'), t[8],  t[9],  'octavos', 'o0'),
-    mkCupMatch(nid('o'), t[10], t[11], 'octavos', 'o1'),
-    mkCupMatch(nid('o'), t[12], t[13], 'octavos', 'o2'),
-    mkCupMatch(nid('o'), t[14], t[15], 'octavos', 'o3'),
-    mkCupMatch(nid('o'), t[16], null, 'octavos', 'o4', { awayFromTie: 'pv0', pending: true }),
-    mkCupMatch(nid('o'), t[17], null, 'octavos', 'o5', { awayFromTie: 'pv1', pending: true }),
-    mkCupMatch(nid('o'), t[18], null, 'octavos', 'o6', { awayFromTie: 'pv2', pending: true }),
-    mkCupMatch(nid('o'), t[19], null, 'octavos', 'o7', { awayFromTie: 'pv3', pending: true }),
-  ];
-
-  const cuartos = [
-    mkCupMatch(nid('c'), null, null, 'cuartos', 'c0', { homeFromTie: 'o0', awayFromTie: 'o4', pending: true }),
-    mkCupMatch(nid('c'), null, null, 'cuartos', 'c1', { homeFromTie: 'o1', awayFromTie: 'o5', pending: true }),
-    mkCupMatch(nid('c'), null, null, 'cuartos', 'c2', { homeFromTie: 'o2', awayFromTie: 'o6', pending: true }),
-    mkCupMatch(nid('c'), null, null, 'cuartos', 'c3', { homeFromTie: 'o3', awayFromTie: 'o7', pending: true }),
-  ];
-
+  // Semis: 4 teams (r2_0/r2_1 on one side, r2_2/r2_3 on the other)
   const semis = [
-    mkCupMatch(nid('s'), null, null, 'semis', 's0', { homeFromTie: 'c0', awayFromTie: 'c1', pending: true }),
-    mkCupMatch(nid('s'), null, null, 'semis', 's1', { homeFromTie: 'c2', awayFromTie: 'c3', pending: true }),
+    mkCupMatch(nid('s'), null, null, 'semis', 's0', { homeFromTie: 'r2_0', awayFromTie: 'r2_1', pending: true }),
+    mkCupMatch(nid('s'), null, null, 'semis', 's1', { homeFromTie: 'r2_2', awayFromTie: 'r2_3', pending: true }),
   ];
 
   const final_ = [
     mkCupMatch(nid('f'), null, null, 'final', 'f0', { homeFromTie: 's0', awayFromTie: 's1', pending: true }),
   ];
 
-  return [previa, octavos, cuartos, semis, final_];
+  return [r1, r2, semis, final_];
 }
 
 // Called after every Copa match save — propagates winners through bracket
@@ -188,9 +181,9 @@ function initializeApp() {
     };
     saveData(data);
   } else {
-    // Migration: detect old round-robin Copa (had .leg property) → replace with cup bracket
+    // Migration: detect old Copa formats (round-robin with .leg, or old previa/octavos bracket)
     const sample = data.matches.copa?.[0]?.[0];
-    if (sample && sample.leg !== undefined) {
+    if (sample && (sample.leg !== undefined || sample.phase === 'previa')) {
       const pIds = data.teams.primera.map(t => t.id);
       const sIds = data.teams.segunda.map(t => t.id);
       data.matches.copa = generateCupBracket([...pIds, ...sIds]);
