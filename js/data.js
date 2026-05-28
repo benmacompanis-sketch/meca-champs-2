@@ -59,6 +59,103 @@ function generateFixtures(teamIds, prefix) {
   return [...idaRounds, ...vueltaRounds];
 }
 
+// ==================== CUP BRACKET ====================
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function mkCupMatch(id, homeTeamId, awayTeamId, phase, tieId, opts) {
+  return Object.assign({
+    id, phase, tieId,
+    homeTeamId: homeTeamId || null,
+    awayTeamId: awayTeamId || null,
+    played: false, homeScore: null, awayScore: null, events: []
+  }, opts || {});
+}
+
+// Returns [previa[], octavos[], cuartos[], semis[], final[]]
+function generateCupBracket(teamIds) {
+  const t = shuffle([...teamIds]);
+  let mc = 0;
+  const nid = ph => `c_${ph}_${mc++}`;
+
+  // Previa: 4 ties (teams[0-7])
+  const previa = [
+    mkCupMatch(nid('pv'), t[0], t[1], 'previa', 'pv0'),
+    mkCupMatch(nid('pv'), t[2], t[3], 'previa', 'pv1'),
+    mkCupMatch(nid('pv'), t[4], t[5], 'previa', 'pv2'),
+    mkCupMatch(nid('pv'), t[6], t[7], 'previa', 'pv3'),
+  ];
+
+  // Octavos: 4 seeded pairs (teams[8-15]) + 4 seeded vs previa winner (teams[16-19])
+  const octavos = [
+    mkCupMatch(nid('o'), t[8],  t[9],  'octavos', 'o0'),
+    mkCupMatch(nid('o'), t[10], t[11], 'octavos', 'o1'),
+    mkCupMatch(nid('o'), t[12], t[13], 'octavos', 'o2'),
+    mkCupMatch(nid('o'), t[14], t[15], 'octavos', 'o3'),
+    mkCupMatch(nid('o'), t[16], null, 'octavos', 'o4', { awayFromTie: 'pv0', pending: true }),
+    mkCupMatch(nid('o'), t[17], null, 'octavos', 'o5', { awayFromTie: 'pv1', pending: true }),
+    mkCupMatch(nid('o'), t[18], null, 'octavos', 'o6', { awayFromTie: 'pv2', pending: true }),
+    mkCupMatch(nid('o'), t[19], null, 'octavos', 'o7', { awayFromTie: 'pv3', pending: true }),
+  ];
+
+  const cuartos = [
+    mkCupMatch(nid('c'), null, null, 'cuartos', 'c0', { homeFromTie: 'o0', awayFromTie: 'o4', pending: true }),
+    mkCupMatch(nid('c'), null, null, 'cuartos', 'c1', { homeFromTie: 'o1', awayFromTie: 'o5', pending: true }),
+    mkCupMatch(nid('c'), null, null, 'cuartos', 'c2', { homeFromTie: 'o2', awayFromTie: 'o6', pending: true }),
+    mkCupMatch(nid('c'), null, null, 'cuartos', 'c3', { homeFromTie: 'o3', awayFromTie: 'o7', pending: true }),
+  ];
+
+  const semis = [
+    mkCupMatch(nid('s'), null, null, 'semis', 's0', { homeFromTie: 'c0', awayFromTie: 'c1', pending: true }),
+    mkCupMatch(nid('s'), null, null, 'semis', 's1', { homeFromTie: 'c2', awayFromTie: 'c3', pending: true }),
+  ];
+
+  const final_ = [
+    mkCupMatch(nid('f'), null, null, 'final', 'f0', { homeFromTie: 's0', awayFromTie: 's1', pending: true }),
+  ];
+
+  return [previa, octavos, cuartos, semis, final_];
+}
+
+// Called after every Copa match save — propagates winners through bracket
+function advanceCupBracket(data) {
+  const flat = data.matches.copa.flat();
+
+  // Build winner map from all played matches
+  const winnerOf = {};
+  for (const m of flat) {
+    if (m.played && m.homeTeamId && m.awayTeamId) {
+      if (m.homeScore > m.awayScore)      winnerOf[m.tieId] = m.homeTeamId;
+      else if (m.awayScore > m.homeScore) winnerOf[m.tieId] = m.awayTeamId;
+    }
+  }
+
+  // Propagate winners to dependent matches
+  for (const m of flat) {
+    if (!m.homeFromTie && !m.awayFromTie) continue;
+
+    const newHome = m.homeFromTie ? (winnerOf[m.homeFromTie] || null) : m.homeTeamId;
+    const newAway = m.awayFromTie ? (winnerOf[m.awayFromTie] || null) : m.awayTeamId;
+
+    if (newHome !== m.homeTeamId || newAway !== m.awayTeamId) {
+      m.homeTeamId = newHome;
+      m.awayTeamId = newAway;
+      if (!newHome || !newAway) {
+        // Teams no longer known — invalidate any result on this match
+        m.pending = true;
+        m.played = false; m.homeScore = null; m.awayScore = null; m.events = [];
+      } else {
+        m.pending = false;
+      }
+    }
+  }
+}
+
 function createDefaultTeam(division, num) {
   return {
     id: createId(),
@@ -85,11 +182,20 @@ function initializeApp() {
       matches: {
         primera: generateFixtures(pIds, 'p'),
         segunda:  generateFixtures(sIds, 's'),
-        copa:     generateFixtures([...pIds, ...sIds], 'c')
+        copa:     generateCupBracket([...pIds, ...sIds])
       },
       news: []
     };
     saveData(data);
+  } else {
+    // Migration: detect old round-robin Copa (had .leg property) → replace with cup bracket
+    const sample = data.matches.copa?.[0]?.[0];
+    if (sample && sample.leg !== undefined) {
+      const pIds = data.teams.primera.map(t => t.id);
+      const sIds = data.teams.segunda.map(t => t.id);
+      data.matches.copa = generateCupBracket([...pIds, ...sIds]);
+      saveData(data);
+    }
   }
   return data;
 }
@@ -198,6 +304,6 @@ function regenerateFixtures() {
   const sIds = data.teams.segunda.map(t => t.id);
   data.matches.primera = generateFixtures(pIds, 'p');
   data.matches.segunda  = generateFixtures(sIds, 's');
-  data.matches.copa     = generateFixtures([...pIds, ...sIds], 'c');
+  data.matches.copa     = generateCupBracket([...pIds, ...sIds]);
   saveData(data);
 }

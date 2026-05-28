@@ -1595,6 +1595,75 @@ body::after {
   #main-content { padding: 1rem .7rem 3rem; }
 }
 
+/* ===== CUP BRACKET ===== */
+.cup-phase { margin-bottom: 2.5rem; }
+
+.cup-phase-header {
+  display: flex; align-items: center; gap: .8rem;
+  padding: .5rem 1rem;
+  background: linear-gradient(90deg, rgba(0,85,255,.15), transparent);
+  border-left: 3px solid var(--blue);
+  border-radius: 0 4px 4px 0;
+  font-family: 'Orbitron', sans-serif;
+  font-size: .85rem; letter-spacing: .1em;
+  color: var(--cyan);
+  margin-bottom: 1rem;
+}
+
+.cup-phase-matches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: .8rem;
+}
+
+.cup-match-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.cup-match-card:hover { border-color: var(--border2); }
+.cup-match-card.cup-match-played { border-color: rgba(0,212,255,.3); }
+.cup-match-card.cup-match-tbd { opacity: .55; }
+.cup-match-card.cup-match-draw { border-color: var(--yellow); }
+
+.cup-team {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .55rem .75rem;
+  gap: .5rem;
+}
+.cup-team-left { display: flex; align-items: center; gap: .5rem; flex: 1; min-width: 0; }
+.cup-team.cup-winner { background: rgba(0,212,255,.08); }
+.cup-team.cup-tbd { opacity: .6; }
+.cup-team-name {
+  font-size: .82rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cup-team-score {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.1rem; font-weight: 700;
+  color: var(--text-muted);
+  min-width: 1.2rem; text-align: center;
+}
+.cup-team-score.score-win { color: var(--cyan); }
+.cup-shield { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+
+.cup-divider { height: 1px; background: var(--border); margin: 0 .75rem; }
+
+.cup-draw-note {
+  font-size: .72rem; color: var(--yellow);
+  text-align: center; padding: .3rem .75rem .5rem;
+}
+
+/* Admin pending match style */
+.admin-match-tbd { opacity: .6; }
+.amr-pending {
+  font-size: .72rem; color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: .3rem .6rem;
+}
+
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }

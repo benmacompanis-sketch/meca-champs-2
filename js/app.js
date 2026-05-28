@@ -9,6 +9,14 @@ const TOURNAMENT_NAMES = {
   copa: 'Copa MC2'
 };
 
+const CUP_PHASES = [
+  { key: 'previa',  label: 'FASE PREVIA',       i: 0 },
+  { key: 'octavos', label: 'OCTAVOS DE FINAL',   i: 1 },
+  { key: 'cuartos', label: 'CUARTOS DE FINAL',   i: 2 },
+  { key: 'semis',   label: 'SEMIFINALES',         i: 3 },
+  { key: 'final',   label: 'GRAN FINAL',          i: 4 },
+];
+
 function navigate(view, extra) {
   currentView = view;
   currentTournamentTab = 'standings';
@@ -27,7 +35,7 @@ function renderView(view, extra) {
   if (view === 'home')           main.innerHTML = renderHome();
   else if (view === 'primera')   main.innerHTML = renderTournament('primera');
   else if (view === 'segunda')   main.innerHTML = renderTournament('segunda');
-  else if (view === 'copa')      main.innerHTML = renderTournament('copa');
+  else if (view === 'copa')      main.innerHTML = renderCopa();
   else if (view === 'equipos')   main.innerHTML = renderEquipos();
   else if (view === 'team')      main.innerHTML = renderTeamPage(extra);
   bindTabEvents();
@@ -148,6 +156,76 @@ function renderTournament(tournament) {
   `;
 }
 
+// ===== COPA MC2 (CUP FORMAT) =====
+function renderCopa() {
+  return `
+    <div class="section-title-bar"><span>COPA MC2</span></div>
+    <div class="tournament-tabs">
+      <button class="ttab active" data-tab="bracket" data-tournament="copa">CUADRO</button>
+      <button class="ttab" data-tab="stats"   data-tournament="copa">ESTADÍSTICAS</button>
+    </div>
+    <div id="tournament-content">
+      ${renderCupBracket()}
+    </div>
+  `;
+}
+
+function renderCupBracket() {
+  const data = getData();
+  const phases = data.matches.copa;
+
+  return CUP_PHASES.map(ph => {
+    const matches = phases[ph.i] || [];
+    return `
+      <div class="cup-phase">
+        <div class="cup-phase-header"><span>${ph.label}</span></div>
+        <div class="cup-phase-matches">
+          ${matches.map(m => renderCupMatchCard(m)).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCupMatchCard(match) {
+  const home = match.homeTeamId ? getTeamById(match.homeTeamId) : null;
+  const away = match.awayTeamId ? getTeamById(match.awayTeamId) : null;
+  const tbd  = !match.homeTeamId || !match.awayTeamId;
+  const played = match.played;
+
+  const isWinner = (side) => played && (
+    side === 'home' ? match.homeScore > match.awayScore :
+                      match.awayScore > match.homeScore
+  );
+  const isDraw = played && match.homeScore === match.awayScore;
+
+  const teamBlock = (team, side) => {
+    const name = team ? escHtml(team.name) : 'A DEFINIR';
+    const score = played ? (side === 'home' ? match.homeScore : match.awayScore) : '';
+    const win = isWinner(side);
+    return `
+      <div class="cup-team ${!team ? 'cup-tbd' : ''} ${win ? 'cup-winner' : ''}">
+        <div class="cup-team-left">
+          ${team?.shield
+            ? `<img src="${team.shield}" class="cup-shield" alt="">`
+            : `<div class="shield-placeholder-sm">${team ? team.name.charAt(0) : '?'}</div>`}
+          <span class="cup-team-name">${name}</span>
+        </div>
+        ${played ? `<span class="cup-team-score ${win ? 'score-win' : ''}">${score}</span>` : ''}
+      </div>
+    `;
+  };
+
+  return `
+    <div class="cup-match-card ${played ? 'cup-match-played' : ''} ${tbd ? 'cup-match-tbd' : ''} ${isDraw && played ? 'cup-match-draw' : ''}">
+      ${teamBlock(home, 'home')}
+      <div class="cup-divider"></div>
+      ${teamBlock(away, 'away')}
+      ${isDraw && played ? '<div class="cup-draw-note">⚠ Empate — sin ganador</div>' : ''}
+    </div>
+  `;
+}
+
 function bindTabEvents() {
   document.querySelectorAll('.ttab').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -163,6 +241,11 @@ function bindTabEvents() {
 }
 
 function renderTournamentTab(tournament, tab) {
+  if (tournament === 'copa') {
+    if (tab === 'bracket') return renderCupBracket();
+    if (tab === 'stats')   return renderStatsSection('copa');
+    return renderCupBracket();
+  }
   if (tab === 'standings') return renderStandingsSection(tournament);
   if (tab === 'fixtures')  return renderFixturesSection(tournament);
   if (tab === 'stats')     return renderStatsSection(tournament);
@@ -317,7 +400,7 @@ function renderMatchCard(match, tournament) {
     ...away.players.map(p => ({ ...p, teamId: away.id }))
   ];
 
-  const evIconMap = { goal: '⚽', yellow: '🟨', red: '🟥' };
+  const evIconMap = { goal: '⚽', assist: '🎯', yellow: '🟨', red: '🟥' };
   const hasEvents = played && (match.events?.some(e => evIconMap[e.type]));
 
   const buildEventsHtml = (teamId, align) => {

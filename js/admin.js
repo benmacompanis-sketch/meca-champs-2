@@ -400,6 +400,8 @@ function renderAdminMatches() {
   `;
 }
 
+const CUP_PHASE_NAMES = ['Fase Previa', 'Octavos de Final', 'Cuartos de Final', 'Semifinal', 'Final'];
+
 function loadAdminRounds() {
   const tournament = document.getElementById('match-tournament')?.value;
   if (!tournament) return;
@@ -407,10 +409,16 @@ function loadAdminRounds() {
   const rounds = data.matches[tournament];
   const sel = document.getElementById('match-round');
   if (!sel) return;
-  sel.innerHTML = rounds.map((r, i) => {
-    const leg = r[0]?.leg === 'vuelta' ? 'V' : 'I';
-    return `<option value="${i}">${leg} - Fecha ${r[0]?.round ?? i+1}</option>`;
-  }).join('');
+  if (tournament === 'copa') {
+    sel.innerHTML = rounds.map((r, i) =>
+      `<option value="${i}">${CUP_PHASE_NAMES[i] || 'Fase ' + (i + 1)}</option>`
+    ).join('');
+  } else {
+    sel.innerHTML = rounds.map((r, i) => {
+      const leg = r[0]?.leg === 'vuelta' ? 'V' : 'I';
+      return `<option value="${i}">${leg} - Fecha ${r[0]?.round ?? i+1}</option>`;
+    }).join('');
+  }
   loadAdminMatches();
 }
 
@@ -425,9 +433,22 @@ function loadAdminMatches() {
   const el = document.getElementById('admin-matches-list');
   if (!el) return;
   el.innerHTML = round.map(match => {
-    const home = getTeamById(match.homeTeamId);
-    const away = getTeamById(match.awayTeamId);
-    if (!home || !away) return '';
+    const home = match.homeTeamId ? getTeamById(match.homeTeamId) : null;
+    const away = match.awayTeamId ? getTeamById(match.awayTeamId) : null;
+
+    if (match.pending || !home || !away) {
+      const hn = home ? escHtml(home.name) : '(A definir)';
+      const an = away ? escHtml(away.name) : '(A definir)';
+      return `
+        <div class="admin-match-row admin-match-tbd">
+          <span class="amr-home">${hn}</span>
+          <span class="amr-score">vs</span>
+          <span class="amr-away">${an}</span>
+          <span class="amr-pending">PENDIENTE</span>
+        </div>
+      `;
+    }
+
     const played = match.played;
     return `
       <div class="admin-match-row ${played ? 'match-done' : ''}">
@@ -577,6 +598,10 @@ function saveMatchResult(tournament, matchId) {
   }
 
   if (saveData(data)) {
+    if (tournament === 'copa') {
+      advanceCupBracket(data);
+      saveData(data);
+    }
     alert('✅ Resultado guardado. Tablas actualizadas.');
     document.getElementById('match-result-editor').innerHTML = '';
     loadAdminMatches();
@@ -594,6 +619,9 @@ function clearMatchResult(tournament, matchId) {
         break;
       }
     }
+  }
+  if (tournament === 'copa') {
+    advanceCupBracket(data);
   }
   saveData(data);
   document.getElementById('match-result-editor').innerHTML = '';
