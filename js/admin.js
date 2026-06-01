@@ -318,7 +318,7 @@ function addPlayer(teamId) {
   const div = data.teams.primera.find(t => t.id === teamId) ? 'primera' : 'segunda';
   const team = data.teams[div].find(t => t.id === teamId);
   if (!team) return;
-  const newPlayer = { id: createId(), name: 'Jugador', photo: null, position: 'DEL', rating: 70, age: 20 };
+  const newPlayer = { id: createId(), name: 'Jugador', photo: null, position: 'DEL', rating: 70, age: 20, country: '' };
   team.players.push(newPlayer);
   saveData(data);
   openEditPlayer(teamId, newPlayer.id);
@@ -357,6 +357,10 @@ function openEditPlayer(teamId, playerId) {
           <label>MEDIA (OVR)</label>
           <input type="number" id="pl-rating" min="1" max="99" value="${player.rating}">
         </div>
+        <div class="form-group">
+          <label>PAÍS DE ORIGEN</label>
+          <input type="text" id="pl-country" value="${escHtml(player.country||'')}" placeholder="Ej: Argentina">
+        </div>
       </div>
       <div class="form-group">
         <label>FOTO DEL JUGADOR</label>
@@ -379,10 +383,11 @@ async function savePlayer(teamId, playerId) {
   const player = team?.players.find(p => p.id === playerId);
   if (!player) return;
 
-  player.name = document.getElementById('pl-name').value.trim() || player.name;
+  player.name    = document.getElementById('pl-name').value.trim() || player.name;
   player.position = document.getElementById('pl-pos').value;
-  player.age = parseInt(document.getElementById('pl-age').value) || player.age;
-  player.rating = parseInt(document.getElementById('pl-rating').value) || player.rating;
+  player.age     = parseInt(document.getElementById('pl-age').value) || player.age;
+  player.rating  = parseInt(document.getElementById('pl-rating').value) || player.rating;
+  player.country = document.getElementById('pl-country').value.trim();
 
   const photoInput = document.getElementById('pl-photo');
   if (photoInput.dataset.resized) player.photo = photoInput.dataset.resized;
