@@ -706,7 +706,7 @@ function renderTeamPage(teamId) {
             </div>
             <div class="player-card-info">
               <div class="player-name">${escHtml(p.name)}</div>
-              <div class="player-meta">${p.age ? p.age + ' años' : '—'}${p.country ? ` · ${escHtml(p.country)}` : ''}</div>
+              <div class="player-meta">${escHtml(p.position || 'JUG')}${p.age ? ` · ${p.age} años` : ''}${p.country ? ` · ${escHtml(p.country)}` : ''}</div>
               <div class="player-rating-bar">
                 <div class="prb-fill" style="width:${p.rating}%"></div>
               </div>
