@@ -673,9 +673,29 @@ function renderTeamPage(teamId) {
     `;
   })();
 
-  const playersHtml = team.players.length === 0
+  const dt = teamDT(team);
+  const dtCard = dt.name || dt.photo ? `
+    <div class="player-card player-card-dt">
+      <div class="player-card-photo">
+        ${dt.photo
+          ? `<img src="${dt.photo}" alt="${escHtml(dt.name)}">`
+          : `<div class="player-photo-placeholder">${(dt.name||'DT').charAt(0)}</div>`}
+        <span class="player-position-badge" style="background:var(--gold);color:#000">DT</span>
+      </div>
+      <div class="player-card-info">
+        <div class="player-name">${escHtml(dt.name || 'Director Técnico')}</div>
+        <div class="player-meta">Director Técnico</div>
+        <div class="player-rating-bar">
+          <div class="prb-fill" style="width:${dt.rating || 0}%;background:var(--gold)"></div>
+        </div>
+        <div class="player-rating-num" style="color:var(--gold)">${dt.rating || '—'} OVR</div>
+      </div>
+    </div>` : '';
+
+  const playersHtml = (team.players.length === 0 && !dtCard)
     ? '<div class="empty-state-sm">No hay jugadores registrados.</div>'
     : `<div class="players-grid">
+        ${dtCard}
         ${team.players.map(p => `
           <div class="player-card">
             <div class="player-card-photo">
