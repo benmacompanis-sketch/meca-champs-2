@@ -76,6 +76,7 @@ function openAdminPanel() {
     </div>
     <div class="admin-nav-tabs">
       <button class="admin-tab active" data-atab="teams">EQUIPOS</button>
+      <button class="admin-tab" data-atab="copa">COPA MC2</button>
       <button class="admin-tab" data-atab="matches">PARTIDOS</button>
       <button class="admin-tab" data-atab="news">NOTICIAS</button>
     </div>
@@ -90,6 +91,7 @@ function openAdminPanel() {
       const atab = tab.dataset.atab;
       document.getElementById('admin-tab-content').innerHTML =
         atab === 'teams'   ? renderAdminTeams()   :
+        atab === 'copa'    ? renderAdminCopa()    :
         atab === 'matches' ? renderAdminMatches()  :
                              renderAdminNews();
       if (atab === 'matches') loadAdminRounds();
@@ -372,6 +374,125 @@ function deletePlayer(teamId, playerId) {
     saveData(data);
     const listEl = document.getElementById(`players-list-${teamId}`);
     if (listEl) listEl.innerHTML = renderPlayersList(team);
+  }
+}
+
+// ===== ADMIN: COPA DRAW =====
+function renderAdminCopa() {
+  const data = getData();
+  const allTeams = [...data.teams.primera, ...data.teams.segunda];
+  const copa = data.matches.copa;
+
+  const teamGroup = {};
+  for (const g of copa.groups)
+    for (const tid of g.teamIds)
+      teamGroup[tid] = g.id;
+
+  const hasResults = copa.groups.some(g => g.matches.some(m => m.played)) ||
+                     copa.knockout.flat().some(m => m.played);
+
+  const groupColors = { A: '#0055ff', B: '#00cc55', C: '#ff9900', D: '#cc00cc' };
+
+  const teamsHtml = allTeams.map(t => {
+    const assigned = teamGroup[t.id] || '';
+    const color = assigned ? groupColors[assigned] : 'var(--border2)';
+    return `
+      <div class="copa-draw-row" id="cdr-${t.id}" style="border-left:3px solid ${color}">
+        <div class="cdr-info">
+          ${t.shield ? `<img src="${t.shield}" class="grp-shield" alt="">` : `<div class="bk-ini">${t.name.charAt(0)}</div>`}
+          <span>${escHtml(t.name)}</span>
+          <span class="cdr-div">${t.division === 'primera' ? '1ra' : '2da'}</span>
+        </div>
+        <select class="cdr-sel" id="cg-${t.id}" onchange="updateDrawRowColor('${t.id}')">
+          <option value="">— Sin grupo</option>
+          ${['A','B','C','D'].map(g =>
+            `<option value="${g}" ${assigned === g ? 'selected' : ''}>${g}</option>`
+          ).join('')}
+        </select>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="admin-section">
+      <div class="admin-section-header">
+        <span>SORTEO GRUPOS · COPA MC2</span>
+        <button class="btn-primary btn-sm" onclick="randomizeCopaGroups()">🎲 ALEATORIO</button>
+      </div>
+      ${hasResults ? `<div class="admin-warning"><small>⚠ Ya hay resultados cargados en la Copa. Cambiar grupos borrará todos los resultados de la Copa.</small></div>` : ''}
+      <div class="copa-draw-legend">
+        ${['A','B','C','D'].map(g => `<span class="cdl-tag" style="background:${groupColors[g]}">GR. ${g} <span class="cdl-count" id="cdl-${g}">0</span></span>`).join('')}
+        <span class="cdl-tag" style="background:var(--border2)">SIN GRUPO <span class="cdl-count" id="cdl-none">0</span></span>
+      </div>
+      <div class="copa-draw-list" id="copa-draw-list">${teamsHtml}</div>
+      <div id="copa-draw-msg"></div>
+      <div class="admin-btns" style="margin-top:1rem">
+        <button class="btn-primary" onclick="saveCopaGroups()">💾 GUARDAR GRUPOS</button>
+      </div>
+    </div>
+  `;
+}
+
+function updateDrawRowColor(teamId) {
+  const sel = document.getElementById(`cg-${teamId}`);
+  const row = document.getElementById(`cdr-${teamId}`);
+  const colors = { A: '#0055ff', B: '#00cc55', C: '#ff9900', D: '#cc00cc', '': 'var(--border2)' };
+  if (row && sel) row.style.borderLeftColor = colors[sel.value] || 'var(--border2)';
+  updateDrawCounts();
+}
+
+function updateDrawCounts() {
+  const data = getData();
+  const allTeams = [...data.teams.primera, ...data.teams.segunda];
+  const counts = { A:0, B:0, C:0, D:0, none:0 };
+  for (const t of allTeams) {
+    const v = document.getElementById(`cg-${t.id}`)?.value || '';
+    if (counts[v] !== undefined) counts[v]++;
+    else counts.none++;
+  }
+  for (const g of ['A','B','C','D']) {
+    const el = document.getElementById(`cdl-${g}`);
+    if (el) el.textContent = counts[g];
+  }
+  const noneEl = document.getElementById('cdl-none');
+  if (noneEl) noneEl.textContent = counts.none;
+}
+
+function randomizeCopaGroups() {
+  const data = getData();
+  const allTeams = [...data.teams.primera, ...data.teams.segunda];
+  const ids = shuffle(allTeams.map(t => t.id));
+  const labels = ['A','B','C','D'];
+  ids.forEach((tid, i) => {
+    const sel = document.getElementById(`cg-${tid}`);
+    if (sel) { sel.value = labels[Math.floor(i / 5)]; updateDrawRowColor(tid); }
+  });
+  updateDrawCounts();
+}
+
+function saveCopaGroups() {
+  const data = getData();
+  const allTeams = [...data.teams.primera, ...data.teams.segunda];
+  const groupMap = { A:[], B:[], C:[], D:[] };
+
+  for (const t of allTeams) {
+    const g = document.getElementById(`cg-${t.id}`)?.value;
+    if (g && groupMap[g]) groupMap[g].push(t.id);
+  }
+
+  const wrong = ['A','B','C','D'].filter(g => groupMap[g].length !== 5);
+  const msg = document.getElementById('copa-draw-msg');
+  if (wrong.length) {
+    const detail = ['A','B','C','D'].map(g => `Grupo ${g}: ${groupMap[g].length}/5`).join('  ·  ');
+    if (msg) msg.innerHTML = `<div style="color:var(--red);padding:.5rem 0;font-size:.82rem">⚠ Cada grupo necesita exactamente 5 equipos.&nbsp;&nbsp;${detail}</div>`;
+    return;
+  }
+
+  data.matches.copa = generateCopaWithGroups(groupMap);
+  if (saveData(data)) {
+    if (msg) msg.innerHTML = '';
+    alert('✅ Grupos guardados. Copa regenerada.');
+    document.getElementById('admin-tab-content').innerHTML = renderAdminCopa();
+    renderView(currentView);
   }
 }
 

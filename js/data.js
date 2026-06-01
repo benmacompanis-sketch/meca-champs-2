@@ -87,12 +87,11 @@ function computeGroupStandings(group) {
   })).sort((a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf);
 }
 
-// 4 groups of 5 → top 2 each → QF/SF/Final + 3rd place match
-function generateCopaBracket(teamIds) {
-  const shuffled = shuffle([...teamIds]);
-  let mc = 0;
-  const groups = ['A','B','C','D'].map((label, gi) => {
-    const gTeams = shuffled.slice(gi * 5, gi * 5 + 5);
+// Build copa from explicit group assignment: groupMap = {A:[5 ids], B:[5 ids], C:[5 ids], D:[5 ids]}
+function generateCopaWithGroups(groupMap) {
+  let mc = 0, kc = 0;
+  const groups = ['A','B','C','D'].map(label => {
+    const gTeams = groupMap[label];
     const matches = [];
     for (let i = 0; i < 5; i++)
       for (let j = i + 1; j < 5; j++)
@@ -101,17 +100,15 @@ function generateCopaBracket(teamIds) {
           homeTeamId: gTeams[i], awayTeamId: gTeams[j],
           played: false, homeScore: null, awayScore: null, events: []
         });
-    return { id: label, teamIds: gTeams, matches };
+    return { id: label, teamIds: [...gTeams], matches };
   });
 
-  let kc = 0;
   const mkk = (tieId, opts) => Object.assign({
     id: `copa_k${kc++}`, phase: 'knockout', tieId,
     homeTeamId: null, awayTeamId: null,
     played: false, homeScore: null, awayScore: null, events: [], pending: true
   }, opts);
 
-  // QF cross-bracket: 1A-2B, 1C-2D, 1B-2A, 1D-2C
   const qf = [
     mkk('qf_0', { homeFromGroup:'A', homeFromPos:1, awayFromGroup:'B', awayFromPos:2 }),
     mkk('qf_1', { homeFromGroup:'C', homeFromPos:1, awayFromGroup:'D', awayFromPos:2 }),
@@ -126,6 +123,12 @@ function generateCopaBracket(teamIds) {
   const third  = [ mkk('3rd_0', { homeFromLoser:'sf_0',  awayFromLoser:'sf_1'  }) ];
 
   return { groups, knockout: [qf, semis, final_, third] };
+}
+
+// 4 groups of 5 → top 2 each → QF/SF/Final + 3rd place match (random draw)
+function generateCopaBracket(teamIds) {
+  const s = shuffle([...teamIds]);
+  return generateCopaWithGroups({ A: s.slice(0,5), B: s.slice(5,10), C: s.slice(10,15), D: s.slice(15,20) });
 }
 
 function advanceCupKnockout(data) {
