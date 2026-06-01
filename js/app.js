@@ -171,55 +171,171 @@ function renderCopa() {
 
 function renderCupBracket() {
   const data = getData();
-  const phases = data.matches.copa;
+  const phases = data.matches.copa; // [r1(10), r2(5), semis(2), final(1)]
   const flatAll = phases.flat();
 
-  const bronzeMatch = flatAll.find(m => m.isBronze);
+  // ---- Main bracket columns: R1(0-7 of r2 feed), R2(0-3), Semis, Final ----
+  // r2[0-3] feed into semis; r2[4] is bronze
+  const r1Main   = phases[0].slice(0, 8); // matches 0-7 (feeds r2_0..r2_3)
+  const r2Main   = phases[1].slice(0, 4); // r2_0..r2_3
+  const semis    = phases[2];             // 2 matches
+  const final_   = phases[3];             // 1 match
+
+  // ---- Bronze path: r1[8], r1[9] → r2[4] ----
+  const r1Bronze = phases[0].slice(8, 10);
+  const bronzeMatch = phases[1][4];
+
+  // Build bracket winner card
+  const finalWinner = final_[0]?.played
+    ? getTeamById(final_[0].homeScore > final_[0].awayScore
+        ? final_[0].homeTeamId : final_[0].awayTeamId)
+    : null;
+
+  // ---- Column builder helpers ----
+  // R1 main: 8 matches in 4 pairs (each pair feeds one R2 match)
+  function bkTeamRow(team, fromTie, isWinner, score, played) {
+    if (team) {
+      const shield = team.shield
+        ? `<img src="${team.shield}" class="bk-shield" alt="">`
+        : `<div class="bk-ini">${team.name.charAt(0)}</div>`;
+      return `<div class="bk-team ${isWinner ? 'bk-win' : played ? 'bk-lose' : ''}">
+        ${shield}<span class="bk-name">${escHtml(team.name)}</span>
+        ${played ? `<span class="bk-sc ${isWinner ? 'bk-sc-win' : ''}">${score}</span>` : ''}
+      </div>`;
+    }
+    if (fromTie) {
+      const src = flatAll.find(m => m.tieId === fromTie);
+      const t1 = src?.homeTeamId ? getTeamById(src.homeTeamId) : null;
+      const t2 = src?.awayTeamId ? getTeamById(src.awayTeamId) : null;
+      if (t1 && t2) {
+        return `<div class="bk-team bk-tbd"><span class="bk-name bk-tbd-txt">Gan. ${escHtml(t1.name)} / ${escHtml(t2.name)}</span></div>`;
+      }
+    }
+    return `<div class="bk-team bk-tbd"><span class="bk-name bk-tbd-txt">A definir</span></div>`;
+  }
+
+  function bkMatch(m) {
+    const home = m.homeTeamId ? getTeamById(m.homeTeamId) : null;
+    const away = m.awayTeamId ? getTeamById(m.awayTeamId) : null;
+    const played = m.played;
+    const homeWin = played && m.homeScore > m.awayScore;
+    const awayWin = played && m.awayScore > m.homeScore;
+    const isDraw  = played && m.homeScore === m.awayScore;
+    return `<div class="bk-match ${isDraw ? 'bk-draw' : ''}">
+      ${bkTeamRow(home, m.homeFromTie, homeWin, m.homeScore, played)}
+      <div class="bk-sep"></div>
+      ${bkTeamRow(away, m.awayFromTie, awayWin, m.awayScore, played)}
+      ${isDraw ? '<div class="bk-draw-note">⚠ Empate</div>' : ''}
+    </div>`;
+  }
+
+  // R1 column: 4 pairs × 2 matches, each pair connects to one R2 slot
+  const r1Col = `<div class="bk-col bk-col-r1">
+    <div class="bk-col-hdr">RONDA 1</div>
+    <div class="bk-col-body">
+      ${[0,1,2,3].map(p => `
+        <div class="bk-pair">
+          <div class="bk-slot">${bkMatch(r1Main[p*2])}</div>
+          <div class="bk-slot">${bkMatch(r1Main[p*2+1])}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+
+  // R2 column: 4 slots grouped in 2 pairs (r2[0,1] → semi[0], r2[2,3] → semi[1])
+  const r2Col = `<div class="bk-col bk-col-r2">
+    <div class="bk-col-hdr">RONDA 2</div>
+    <div class="bk-col-body">
+      ${[0,1].map(p => `
+        <div class="bk-pair">
+          <div class="bk-slot">${bkMatch(r2Main[p*2])}</div>
+          <div class="bk-slot">${bkMatch(r2Main[p*2+1])}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+
+  // Semis column: 2 slots grouped in 1 pair feeding final
+  const semisCol = `<div class="bk-col bk-col-semis">
+    <div class="bk-col-hdr">SEMIFINAL</div>
+    <div class="bk-col-body">
+      <div class="bk-pair">
+        <div class="bk-slot">${bkMatch(semis[0])}</div>
+        <div class="bk-slot">${bkMatch(semis[1])}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Final column
+  const finalCol = `<div class="bk-col bk-col-final">
+    <div class="bk-col-hdr">🏆 FINAL</div>
+    <div class="bk-col-body">
+      <div class="bk-pair bk-pair-final">
+        <div class="bk-slot">${bkMatch(final_[0])}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Winner podium
+  const winnerCol = finalWinner ? `<div class="bk-col bk-col-winner">
+    <div class="bk-col-hdr">&nbsp;</div>
+    <div class="bk-col-body">
+      <div class="bk-pair bk-pair-final">
+        <div class="bk-slot bk-slot-winner">
+          <div class="bk-award">🥇</div>
+          ${finalWinner.shield ? `<img src="${finalWinner.shield}" class="bk-award-shield" alt="">` : `<div class="bk-ini bk-ini-lg">${finalWinner.name.charAt(0)}</div>`}
+          <div class="bk-award-name">${escHtml(finalWinner.name)}</div>
+        </div>
+      </div>
+    </div>
+  </div>` : '';
+
+  // Bronze section
   const bronzeWinner = bronzeMatch?.played
     ? getTeamById(bronzeMatch.homeScore > bronzeMatch.awayScore
         ? bronzeMatch.homeTeamId : bronzeMatch.awayTeamId)
     : null;
 
-  const phasesHtml = CUP_PHASES.map(ph => {
-    const matches = phases[ph.i] || [];
-    return `
-      <div class="cup-phase">
-        <div class="cup-phase-header"><span>${ph.label}</span></div>
-        <div class="cup-phase-matches">
-          ${matches.map(m => renderCupMatchCard(m, flatAll)).join('')}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  const bronzeName = bronzeWinner
-    ? escHtml(bronzeWinner.name)
-    : bronzeMatch?.homeTeamId && bronzeMatch?.awayTeamId
-      ? `Ganador de: ${escHtml(getTeamById(bronzeMatch.homeTeamId)?.name || '?')} vs ${escHtml(getTeamById(bronzeMatch.awayTeamId)?.name || '?')}`
-      : 'A DEFINIR';
-
-  const bronzeHtml = `
-    <div class="cup-phase">
-      <div class="cup-phase-header" style="border-left-color:var(--yellow)"><span>🥉 3ER LUGAR</span></div>
-      <div class="cup-phase-matches">
-        <div class="cup-match-card ${bronzeWinner ? 'cup-match-played' : 'cup-match-tbd-card'}">
-          <div class="cup-team ${bronzeWinner ? 'cup-winner' : 'cup-tbd'}">
-            <div class="cup-team-left">
-              ${bronzeWinner?.shield ? `<img src="${bronzeWinner.shield}" class="cup-shield" alt="">` : `<div class="shield-placeholder-sm">${bronzeWinner ? bronzeWinner.name.charAt(0) : '?'}</div>`}
-              <span class="cup-team-name">${bronzeName}</span>
-            </div>
-          </div>
-          <div class="cup-divider"></div>
-          <div class="cup-team cup-tbd">
-            <div class="cup-team-left">
-              <span class="cup-team-name" style="font-size:.72rem;color:var(--text-muted)">Pasa directo — no juega Semis</span>
+  const bronzeSection = `
+    <div class="bk-bronze-wrap">
+      <div class="bk-bronze-title">🥉 TERCER LUGAR (pasa directo — ganador de R2)</div>
+      <div class="bk-bronze-track">
+        <div class="bk-col bk-col-br1">
+          <div class="bk-col-hdr">RONDA 1</div>
+          <div class="bk-col-body">
+            <div class="bk-pair">
+              <div class="bk-slot">${bkMatch(r1Bronze[0])}</div>
+              <div class="bk-slot">${bkMatch(r1Bronze[1])}</div>
             </div>
           </div>
         </div>
+        <div class="bk-col bk-col-br2">
+          <div class="bk-col-hdr">RONDA 2</div>
+          <div class="bk-col-body">
+            <div class="bk-pair">
+              <div class="bk-slot">${bkMatch(bronzeMatch)}</div>
+            </div>
+          </div>
+        </div>
+        ${bronzeWinner ? `<div class="bk-col bk-col-winner">
+          <div class="bk-col-hdr">&nbsp;</div>
+          <div class="bk-col-body">
+            <div class="bk-pair">
+              <div class="bk-slot bk-slot-winner bk-slot-bronze">
+                <div class="bk-award">🥉</div>
+                ${bronzeWinner.shield ? `<img src="${bronzeWinner.shield}" class="bk-award-shield" alt="">` : `<div class="bk-ini bk-ini-lg">${bronzeWinner.name.charAt(0)}</div>`}
+                <div class="bk-award-name">${escHtml(bronzeWinner.name)}</div>
+              </div>
+            </div>
+          </div>
+        </div>` : ''}
       </div>
     </div>`;
 
-  return phasesHtml + bronzeHtml;
+  return `<div class="bracket-wrap">
+    <div class="bracket-track">
+      ${r1Col}${r2Col}${semisCol}${finalCol}${winnerCol}
+    </div>
+    ${bronzeSection}
+  </div>`;
 }
 
 function getCupSourceNames(fromTieId, allCupMatches) {
@@ -228,55 +344,6 @@ function getCupSourceNames(fromTieId, allCupMatches) {
   const t1 = src.homeTeamId ? getTeamById(src.homeTeamId) : null;
   const t2 = src.awayTeamId ? getTeamById(src.awayTeamId) : null;
   return { t1Name: t1?.name, t2Name: t2?.name };
-}
-
-function renderCupMatchCard(match, allCupMatches) {
-  const home = match.homeTeamId ? getTeamById(match.homeTeamId) : null;
-  const away = match.awayTeamId ? getTeamById(match.awayTeamId) : null;
-  const played = match.played;
-  const isDraw = played && match.homeScore === match.awayScore;
-  const tbd = !match.homeTeamId || !match.awayTeamId;
-
-  const isWin = (side) => played &&
-    (side === 'home' ? match.homeScore > match.awayScore : match.awayScore > match.homeScore);
-
-  const teamBlock = (team, fromTie, side) => {
-    if (team) {
-      const win = isWin(side);
-      const score = side === 'home' ? match.homeScore : match.awayScore;
-      return `
-        <div class="cup-team ${win ? 'cup-winner' : ''}">
-          <div class="cup-team-left">
-            ${team.shield
-              ? `<img src="${team.shield}" class="cup-shield" alt="">`
-              : `<div class="shield-placeholder-sm">${team.name.charAt(0)}</div>`}
-            <span class="cup-team-name">${escHtml(team.name)}</span>
-          </div>
-          ${played ? `<span class="cup-team-score ${win ? 'score-win' : ''}">${score}</span>` : ''}
-        </div>`;
-    }
-    if (fromTie && allCupMatches) {
-      const src = getCupSourceNames(fromTie, allCupMatches);
-      if (src?.t1Name && src?.t2Name) {
-        return `
-          <div class="cup-team cup-tbd">
-            <div class="cup-team-left cup-tbd-source">
-              <span class="cup-tbd-label">Ganador de</span>
-              <span class="cup-tbd-names">${escHtml(src.t1Name)} <small>vs</small> ${escHtml(src.t2Name)}</span>
-            </div>
-          </div>`;
-      }
-    }
-    return `<div class="cup-team cup-tbd"><div class="cup-team-left"><span class="cup-team-name">A DEFINIR</span></div></div>`;
-  };
-
-  return `
-    <div class="cup-match-card ${played ? 'cup-match-played' : ''} ${tbd ? 'cup-match-tbd-card' : ''} ${isDraw && played ? 'cup-match-draw' : ''}">
-      ${teamBlock(home, match.homeFromTie, 'home')}
-      <div class="cup-divider"></div>
-      ${teamBlock(away, match.awayFromTie, 'away')}
-      ${isDraw && played ? '<div class="cup-draw-note">⚠ Empate — ingresá un ganador</div>' : ''}
-    </div>`;
 }
 
 function bindTabEvents() {
