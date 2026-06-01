@@ -346,7 +346,27 @@ function openEditPlayer(teamId, playerId) {
         <div class="form-group">
           <label>POSICIÓN</label>
           <select id="pl-pos">
-            ${['GK','DEF','MED','DEL'].map(p => `<option value="${p}" ${player.position===p?'selected':''}>${p}</option>`).join('')}
+            <optgroup label="Portero">
+              <option value="POR" ${player.position==='POR'?'selected':''}>POR — Portero</option>
+            </optgroup>
+            <optgroup label="Defensa">
+              <option value="DFC" ${player.position==='DFC'?'selected':''}>DFC — Defensor Central</option>
+              <option value="LD"  ${player.position==='LD' ?'selected':''}>LD — Lateral Derecho</option>
+              <option value="LI"  ${player.position==='LI' ?'selected':''}>LI — Lateral Izquierdo</option>
+            </optgroup>
+            <optgroup label="Mediocampo">
+              <option value="MCD" ${player.position==='MCD'?'selected':''}>MCD — Mediocampista Defensivo</option>
+              <option value="MC"  ${player.position==='MC' ?'selected':''}>MC — Mediocampista Central</option>
+              <option value="MD"  ${player.position==='MD' ?'selected':''}>MD — Mediocampista Derecho</option>
+              <option value="MI"  ${player.position==='MI' ?'selected':''}>MI — Mediocampista Izquierdo</option>
+              <option value="MCO" ${player.position==='MCO'?'selected':''}>MCO — Mediocampista Ofensivo</option>
+            </optgroup>
+            <optgroup label="Ataque">
+              <option value="ED"  ${player.position==='ED' ?'selected':''}>ED — Extremo Derecho</option>
+              <option value="EI"  ${player.position==='EI' ?'selected':''}>EI — Extremo Izquierdo</option>
+              <option value="SD"  ${player.position==='SD' ?'selected':''}>SD — Segunda Delantera</option>
+              <option value="DC"  ${player.position==='DC' ?'selected':''}>DC — Delantero Centro</option>
+            </optgroup>
           </select>
         </div>
         <div class="form-group">
