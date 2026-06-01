@@ -400,20 +400,23 @@ function renderAdminMatches() {
   `;
 }
 
-const CUP_PHASE_NAMES = ['Ronda 1', 'Ronda 2', 'Semifinal', 'Gran Final'];
-
 function loadAdminRounds() {
   const tournament = document.getElementById('match-tournament')?.value;
   if (!tournament) return;
   const data = getData();
-  const rounds = data.matches[tournament];
   const sel = document.getElementById('match-round');
   if (!sel) return;
   if (tournament === 'copa') {
-    sel.innerHTML = rounds.map((r, i) =>
-      `<option value="${i}">${CUP_PHASE_NAMES[i] || 'Fase ' + (i + 1)}</option>`
-    ).join('');
+    const copa = data.matches.copa;
+    sel.innerHTML = [
+      ...copa.groups.map(g => `<option value="group_${g.id}">Grupo ${g.id}</option>`),
+      `<option value="knockout_0">Cuartos de Final</option>`,
+      `<option value="knockout_1">Semifinal</option>`,
+      `<option value="knockout_2">Gran Final</option>`,
+      `<option value="knockout_3">Tercer Lugar</option>`,
+    ].join('');
   } else {
+    const rounds = data.matches[tournament];
     sel.innerHTML = rounds.map((r, i) => {
       const leg = r[0]?.leg === 'vuelta' ? 'V' : 'I';
       return `<option value="${i}">${leg} - Fecha ${r[0]?.round ?? i+1}</option>`;
@@ -424,10 +427,22 @@ function loadAdminRounds() {
 
 function loadAdminMatches() {
   const tournament = document.getElementById('match-tournament')?.value;
-  const roundIdx = parseInt(document.getElementById('match-round')?.value);
-  if (!tournament || isNaN(roundIdx)) return;
+  const roundVal = document.getElementById('match-round')?.value;
+  if (!tournament || !roundVal) return;
   const data = getData();
-  const round = data.matches[tournament][roundIdx];
+  let round;
+  if (tournament === 'copa') {
+    const copa = data.matches.copa;
+    if (roundVal.startsWith('group_')) {
+      const gId = roundVal.replace('group_', '');
+      round = copa.groups.find(g => g.id === gId)?.matches || [];
+    } else {
+      const idx = parseInt(roundVal.replace('knockout_', ''));
+      round = copa.knockout[idx] || [];
+    }
+  } else {
+    round = data.matches[tournament][parseInt(roundVal)] || [];
+  }
   if (!round) return;
 
   const el = document.getElementById('admin-matches-list');
@@ -465,6 +480,16 @@ function loadAdminMatches() {
 
 function findMatch(tournament, matchId) {
   const data = getData();
+  if (tournament === 'copa') {
+    const copa = data.matches.copa;
+    for (const g of copa.groups)
+      for (const m of g.matches)
+        if (m.id === matchId) return m;
+    for (const round of copa.knockout)
+      for (const m of round)
+        if (m.id === matchId) return m;
+    return null;
+  }
   for (const round of data.matches[tournament])
     for (const m of round)
       if (m.id === matchId) return m;
@@ -585,43 +610,41 @@ function saveMatchResult(tournament, matchId) {
   });
 
   const data = getData();
-  for (const round of data.matches[tournament]) {
-    for (const m of round) {
-      if (m.id === matchId) {
-        m.played = true;
-        m.homeScore = homeScore;
-        m.awayScore = awayScore;
-        m.events = events;
-        break;
-      }
-    }
+  const setResult = m => { m.played = true; m.homeScore = homeScore; m.awayScore = awayScore; m.events = events; };
+  if (tournament === 'copa') {
+    const copa = data.matches.copa;
+    let found = false;
+    for (const g of copa.groups) { for (const m of g.matches) { if (m.id === matchId) { setResult(m); found = true; break; } } if (found) break; }
+    if (!found) for (const round of copa.knockout) { for (const m of round) { if (m.id === matchId) { setResult(m); found = true; break; } } if (found) break; }
+    advanceCupKnockout(data);
+    saveData(data);
+  } else {
+    for (const round of data.matches[tournament])
+      for (const m of round)
+        if (m.id === matchId) { setResult(m); break; }
+    saveData(data);
   }
 
-  if (saveData(data)) {
-    if (tournament === 'copa') {
-      advanceCupBracket(data);
-      saveData(data);
-    }
-    alert('✅ Resultado guardado. Tablas actualizadas.');
-    document.getElementById('match-result-editor').innerHTML = '';
-    loadAdminMatches();
-    renderView(currentView);
-  }
+  alert('✅ Resultado guardado. Tablas actualizadas.');
+  document.getElementById('match-result-editor').innerHTML = '';
+  loadAdminMatches();
+  renderView(currentView);
 }
 
 function clearMatchResult(tournament, matchId) {
   if (!confirm('¿Borrar el resultado de este partido?')) return;
   const data = getData();
-  for (const round of data.matches[tournament]) {
-    for (const m of round) {
-      if (m.id === matchId) {
-        m.played = false; m.homeScore = null; m.awayScore = null; m.events = [];
-        break;
-      }
-    }
-  }
+  const clearResult = m => { m.played = false; m.homeScore = null; m.awayScore = null; m.events = []; };
   if (tournament === 'copa') {
-    advanceCupBracket(data);
+    const copa = data.matches.copa;
+    let found = false;
+    for (const g of copa.groups) { for (const m of g.matches) { if (m.id === matchId) { clearResult(m); found = true; break; } } if (found) break; }
+    if (!found) for (const round of copa.knockout) { for (const m of round) { if (m.id === matchId) { clearResult(m); found = true; break; } } if (found) break; }
+    advanceCupKnockout(data);
+  } else {
+    for (const round of data.matches[tournament])
+      for (const m of round)
+        if (m.id === matchId) { clearResult(m); break; }
   }
   saveData(data);
   document.getElementById('match-result-editor').innerHTML = '';
