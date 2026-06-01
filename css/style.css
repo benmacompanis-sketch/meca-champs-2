@@ -937,6 +937,7 @@ body::after {
   color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.staff-meta { font-size: .78rem; color: var(--text-dim); margin-top: .1rem; }
 .staff-rating {
   font-family: 'Orbitron', sans-serif;
   font-size: .8rem; font-weight: 700;

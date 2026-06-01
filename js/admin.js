@@ -180,6 +180,8 @@ function openEditTeam(teamId) {
         <div class="form-group">
           <label>DT — Nombre</label>
           <input type="text" id="te-dt-name" value="${escHtml(teamDT(team).name)}" placeholder="Nombre del DT">
+          <label style="margin-top:.5rem">DT — Nacionalidad</label>
+          <input type="text" id="te-dt-country" value="${escHtml(teamDT(team).country||'')}" placeholder="Ej: Argentina">
           <label style="margin-top:.5rem">DT — Media (OVR)</label>
           <input type="number" id="te-dt-rating" min="1" max="99" value="${teamDT(team).rating || 70}">
           <label style="margin-top:.5rem">DT — Foto</label>
@@ -272,8 +274,9 @@ async function saveTeamEdits(teamId) {
   team.president = pres;
 
   const dt = teamDT(team);
-  dt.name   = document.getElementById('te-dt-name').value.trim();
-  dt.rating = parseInt(document.getElementById('te-dt-rating').value) || dt.rating;
+  dt.name    = document.getElementById('te-dt-name').value.trim();
+  dt.country = document.getElementById('te-dt-country').value.trim();
+  dt.rating  = parseInt(document.getElementById('te-dt-rating').value) || dt.rating;
   const dtPhoto = document.getElementById('te-dt-photo');
   if (dtPhoto?.dataset.resized) dt.photo = dtPhoto.dataset.resized;
   team.dt = dt;

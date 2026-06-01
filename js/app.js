@@ -757,6 +757,7 @@ function renderTeamPage(teamId) {
             <div class="staff-info">
               <div class="staff-role">${role}</div>
               <div class="staff-name">${escHtml(obj.name || '—')}</div>
+              ${obj.country ? `<div class="staff-meta">${escHtml(obj.country)}</div>` : ''}
               ${showRating && obj.rating ? `<div class="staff-rating">${obj.rating} <span>OVR</span></div>` : ''}
             </div>
           </div>`;
