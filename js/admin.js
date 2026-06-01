@@ -162,12 +162,31 @@ function openEditTeam(teamId) {
           <input type="text" id="te-name" value="${escHtml(team.name)}">
         </div>
         <div class="form-group">
-          <label>PRESIDENTE / DT</label>
-          <input type="text" id="te-president" value="${escHtml(team.president)}">
-        </div>
-        <div class="form-group">
           <label>VALORACIÓN GENERAL (OVR)</label>
           <input type="number" id="te-rating" min="1" max="99" value="${team.rating}">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>PRESIDENTE — Nombre</label>
+          <input type="text" id="te-pres-name" value="${escHtml(teamPresident(team).name)}" placeholder="Nombre del presidente">
+          <label style="margin-top:.5rem">PRESIDENTE — Foto</label>
+          ${teamPresident(team).photo
+            ? `<img src="${teamPresident(team).photo}" class="preview-img" id="preview-pres">`
+            : `<div class="preview-img preview-empty" id="preview-pres">SIN FOTO</div>`}
+          <input type="file" id="te-pres-photo" accept="image/*" onchange="previewUpload('te-pres-photo','preview-pres',300,400)">
+        </div>
+        <div class="form-group">
+          <label>DT — Nombre</label>
+          <input type="text" id="te-dt-name" value="${escHtml(teamDT(team).name)}" placeholder="Nombre del DT">
+          <label style="margin-top:.5rem">DT — Media (OVR)</label>
+          <input type="number" id="te-dt-rating" min="1" max="99" value="${teamDT(team).rating || 70}">
+          <label style="margin-top:.5rem">DT — Foto</label>
+          ${teamDT(team).photo
+            ? `<img src="${teamDT(team).photo}" class="preview-img" id="preview-dt">`
+            : `<div class="preview-img preview-empty" id="preview-dt">SIN FOTO</div>`}
+          <input type="file" id="te-dt-photo" accept="image/*" onchange="previewUpload('te-dt-photo','preview-dt',300,400)">
         </div>
       </div>
 
@@ -243,9 +262,21 @@ async function saveTeamEdits(teamId) {
   if (idx === -1) return;
 
   const team = data.teams[div][idx];
-  team.name = document.getElementById('te-name').value.trim() || team.name;
-  team.president = document.getElementById('te-president').value.trim();
+  team.name   = document.getElementById('te-name').value.trim() || team.name;
   team.rating = parseInt(document.getElementById('te-rating').value) || team.rating;
+
+  const pres = teamPresident(team);
+  pres.name = document.getElementById('te-pres-name').value.trim();
+  const presPhoto = document.getElementById('te-pres-photo');
+  if (presPhoto?.dataset.resized) pres.photo = presPhoto.dataset.resized;
+  team.president = pres;
+
+  const dt = teamDT(team);
+  dt.name   = document.getElementById('te-dt-name').value.trim();
+  dt.rating = parseInt(document.getElementById('te-dt-rating').value) || dt.rating;
+  const dtPhoto = document.getElementById('te-dt-photo');
+  if (dtPhoto?.dataset.resized) dt.photo = dtPhoto.dataset.resized;
+  team.dt = dt;
 
   const shieldInput = document.getElementById('te-shield');
   if (shieldInput.dataset.resized) team.shield = shieldInput.dataset.resized;

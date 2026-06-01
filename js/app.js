@@ -635,7 +635,7 @@ function renderEquipos() {
               <span class="rating-badge">${t.rating}</span>
               <span class="rating-label">OVR</span>
             </div>
-            ${t.president ? `<div class="team-card-pres">DT: ${escHtml(t.president)}</div>` : ''}
+            ${teamDT(t).name ? `<div class="team-card-pres">DT: ${escHtml(teamDT(t).name)}</div>` : ''}
             <div class="team-card-players">${t.players.length} jugadores</div>
           </div>
         </div>
@@ -714,7 +714,6 @@ function renderTeamPage(teamId) {
         <div class="team-page-info">
           <div class="team-page-division">${divisionLabel}</div>
           <h1 class="team-page-name">${escHtml(team.name)}</h1>
-          ${team.president ? `<div class="team-page-pres">🏆 ${escHtml(team.president)}</div>` : ''}
           <div class="team-page-rating">
             <span class="rating-big">${team.rating}</span><span class="rating-ovr-label">OVR</span>
           </div>
@@ -722,6 +721,32 @@ function renderTeamPage(teamId) {
       </div>
 
       ${statsHtml}
+
+      ${(() => {
+        const pres = teamPresident(team);
+        const dt   = teamDT(team);
+        if (!pres.name && !pres.photo && !dt.name && !dt.photo) return '';
+        const staffCard = (role, obj, showRating) => {
+          if (!obj.name && !obj.photo) return '';
+          return `<div class="staff-card">
+            <div class="staff-photo">
+              ${obj.photo
+                ? `<img src="${obj.photo}" alt="${escHtml(obj.name)}">`
+                : `<div class="staff-photo-placeholder">${(obj.name||'?').charAt(0)}</div>`}
+            </div>
+            <div class="staff-info">
+              <div class="staff-role">${role}</div>
+              <div class="staff-name">${escHtml(obj.name || '—')}</div>
+              ${showRating && obj.rating ? `<div class="staff-rating">${obj.rating} <span>OVR</span></div>` : ''}
+            </div>
+          </div>`;
+        };
+        return `<div class="staff-section">
+          ${staffCard('PRESIDENTE', pres, false)}
+          ${staffCard('DIRECTOR TÉCNICO', dt, true)}
+        </div>`;
+      })()}
+
       ${jerseyHtml}
 
       <div class="section-title-bar" style="margin-top:2rem"><span>PLANTEL</span></div>

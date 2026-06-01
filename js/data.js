@@ -175,12 +175,23 @@ function createDefaultTeam(division, num) {
     name: `Equipo ${num}`,
     division,
     shield: null,
-    president: '',
+    president: { name: '', photo: null },
+    dt: { name: '', photo: null, rating: 70 },
     rating: 70,
     jerseyHome: null,
     jerseyAway: null,
     players: []
   };
+}
+
+// Migration helpers — old data had president as plain string
+function teamPresident(team) {
+  if (!team.president) return { name: '', photo: null };
+  if (typeof team.president === 'string') return { name: team.president, photo: null };
+  return team.president;
+}
+function teamDT(team) {
+  return team.dt || { name: '', photo: null, rating: 70 };
 }
 
 function initializeApp() {
