@@ -95,22 +95,20 @@ function renderHome() {
   `;
 }
 
+function allMatches(data) {
+  const liga = [...data.matches.primera.flat(), ...data.matches.segunda.flat()];
+  const copa = data.matches.copa
+    ? [...data.matches.copa.groups.flatMap(g => g.matches), ...data.matches.copa.knockout.flat()]
+    : [];
+  return [...liga, ...copa];
+}
+
 function countPlayedMatches() {
-  const data = getData();
-  let c = 0;
-  for (const t of ['primera','segunda','copa'])
-    for (const r of data.matches[t])
-      for (const m of r) if (m.played) c++;
-  return c;
+  return allMatches(getData()).filter(m => m.played).length;
 }
 
 function countTotalGoals() {
-  const data = getData();
-  let g = 0;
-  for (const t of ['primera','segunda','copa'])
-    for (const r of data.matches[t])
-      for (const m of r) if (m.played) g += (m.homeScore||0) + (m.awayScore||0);
-  return g;
+  return allMatches(getData()).filter(m => m.played).reduce((s, m) => s + (m.homeScore||0) + (m.awayScore||0), 0);
 }
 
 function getFeaturedStats() { return {}; }
