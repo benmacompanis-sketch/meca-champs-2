@@ -789,8 +789,8 @@ function formatDate(dateStr) {
 }
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', () => {
-  initializeApp();
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeApp();
   navigate('home');
 
   document.querySelectorAll('.nav-link').forEach(link => {

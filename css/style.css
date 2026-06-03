@@ -1235,6 +1235,30 @@ body::after {
 }
 .admin-warning small { color: var(--text-dim); font-size: .8rem; }
 
+.admin-sync-warning {
+  padding: .6rem 1rem;
+  background: rgba(180,90,0,.18);
+  border: 1px solid rgba(251,146,60,.3);
+  border-radius: 6px;
+  color: #fb923c;
+  font-size: .82rem;
+  margin-bottom: .75rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--cyan);
+  cursor: pointer;
+  font: inherit;
+  font-size: .82rem;
+  text-decoration: underline;
+  padding: 0;
+}
+
 /* Match admin */
 .admin-match-row {
   display: flex;

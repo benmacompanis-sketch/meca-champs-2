@@ -74,29 +74,99 @@ function openAdminPanel() {
         <button class="btn-ghost btn-sm" onclick="closeAdminPanel()">✕</button>
       </div>
     </div>
+    ${!getGistToken() ? `<div class="admin-sync-warning">⚠ Sin token de GitHub — los cambios no se sincronizan. <button class="btn-link" onclick="switchAdminTab('config')">Configurar ahora</button></div>` : ''}
     <div class="admin-nav-tabs">
       <button class="admin-tab active" data-atab="teams">EQUIPOS</button>
       <button class="admin-tab" data-atab="copa">COPA MC2</button>
       <button class="admin-tab" data-atab="matches">PARTIDOS</button>
       <button class="admin-tab" data-atab="news">NOTICIAS</button>
+      <button class="admin-tab" data-atab="config">⚙ CONFIG</button>
     </div>
     <div id="admin-tab-content">
       ${renderAdminTeams()}
     </div>
   `;
   document.querySelectorAll('.admin-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const atab = tab.dataset.atab;
-      document.getElementById('admin-tab-content').innerHTML =
-        atab === 'teams'   ? renderAdminTeams()   :
-        atab === 'copa'    ? renderAdminCopa()    :
-        atab === 'matches' ? renderAdminMatches()  :
-                             renderAdminNews();
-      if (atab === 'matches') loadAdminRounds();
-    });
+    tab.addEventListener('click', () => switchAdminTab(tab.dataset.atab));
   });
+}
+
+function switchAdminTab(atab) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t.dataset.atab === atab));
+  const content = document.getElementById('admin-tab-content');
+  if (!content) return;
+  content.innerHTML =
+    atab === 'teams'   ? renderAdminTeams()   :
+    atab === 'copa'    ? renderAdminCopa()    :
+    atab === 'matches' ? renderAdminMatches() :
+    atab === 'config'  ? renderAdminConfig()  :
+                         renderAdminNews();
+  if (atab === 'matches') loadAdminRounds();
+}
+
+// ===== ADMIN: CONFIG =====
+function renderAdminConfig() {
+  const hasToken = !!getGistToken();
+  return `
+    <div class="admin-section">
+      <div class="admin-section-header"><span>SINCRONIZACIÓN EN LA NUBE</span></div>
+      <div class="admin-form" style="max-width:520px">
+        <div style="padding:.5rem 0 1rem">
+          ${hasToken
+            ? '<span style="color:#4ade80">✓ Token configurado — todos los cambios se sincronizan entre usuarios</span>'
+            : '<span style="color:#fb923c">⚠ Sin token — los cambios son solo locales en este dispositivo</span>'
+          }
+        </div>
+        <div class="form-group">
+          <label>TOKEN DE GITHUB (solo se guarda en este dispositivo)</label>
+          <input type="password" id="gist-token-input" placeholder="ghp_xxxxxxxx..."
+            value="${hasToken ? '●●●●●●●●●●●●●●●●●●●●' : ''}"
+            onfocus="if(this.value.startsWith('●')) this.value=''">
+          <small style="color:#6b7280;margin-top:.25rem;display:block">
+            El token nunca se sube al código ni se comparte. Solo sirve para que vos (el admin) puedas guardar cambios.
+          </small>
+        </div>
+        <div class="admin-btns">
+          <button class="btn-primary" onclick="saveGistTokenFromAdmin()">GUARDAR TOKEN</button>
+          ${hasToken ? `<button class="btn-danger btn-sm" onclick="clearGistToken()">BORRAR TOKEN</button>` : ''}
+        </div>
+        <div id="token-msg" class="hidden" style="padding:.5rem 0"></div>
+      </div>
+
+      <div class="admin-section-header" style="margin-top:2rem"><span>CÓMO OBTENER EL TOKEN</span></div>
+      <div style="padding:.75rem 0;line-height:2;color:#9ca3af">
+        <ol style="padding-left:1.5rem;margin:0">
+          <li>Ir a <strong style="color:#e5e7eb">github.com</strong> → tu perfil (arriba a la derecha) → <strong style="color:#e5e7eb">Settings</strong></li>
+          <li>Al fondo del menú izquierdo: <strong style="color:#e5e7eb">Developer settings</strong></li>
+          <li><strong style="color:#e5e7eb">Personal access tokens → Tokens (classic)</strong></li>
+          <li><strong style="color:#e5e7eb">Generate new token (classic)</strong> → darle nombre "mecachamps2"</li>
+          <li>Seleccionar solo el permiso <strong style="color:#4ade80">gist</strong> → Generate token</li>
+          <li>Copiar el token que empieza con <strong style="color:#e5e7eb">ghp_</strong> y pegarlo arriba</li>
+        </ol>
+      </div>
+    </div>
+  `;
+}
+
+function saveGistTokenFromAdmin() {
+  const input = document.getElementById('gist-token-input');
+  const token = (input.value || '').trim();
+  if (!token || token.startsWith('●')) {
+    alert('Ingresá un token válido (empieza con ghp_ o gho_)');
+    return;
+  }
+  setGistToken(token);
+  const msg = document.getElementById('token-msg');
+  msg.textContent = '✓ Token guardado. Recargar la página para sincronizar.';
+  msg.style.color = '#4ade80';
+  msg.classList.remove('hidden');
+  setTimeout(() => openAdminPanel(), 1800);
+}
+
+function clearGistToken() {
+  if (!confirm('¿Borrar el token? Ya no podrás guardar cambios en la nube desde este dispositivo.')) return;
+  localStorage.removeItem(TOKEN_KEY);
+  openAdminPanel();
 }
 
 // ===== ADMIN: TEAMS =====

@@ -1,21 +1,56 @@
 // ==================== DATA LAYER ====================
-const DB_KEY = 'mecachamps2_v1';
+// Base de datos compartida via GitHub Gist
+// - Lectura: URL pública del Gist (sin credenciales en el código)
+// - Escritura: token de GitHub guardado en localStorage del admin
+const _GIST_ID   = '42d6b29e1fcf7ee9deaae760ebd10d11';
+const _GIST_USER = 'benmacompanis-sketch';
+const _GIST_FILE = 'mecachamps2_db.json';
+const DB_KEY     = 'mecachamps2_v1';   // backup local
+const TOKEN_KEY  = 'mecachamps2_token'; // token del admin en localStorage
+
+function getGistToken() {
+  return localStorage.getItem(TOKEN_KEY) || '';
+}
+function setGistToken(token) {
+  localStorage.setItem(TOKEN_KEY, token.trim());
+}
+
+let _data = null;
+
+async function _gistRead() {
+  // URL pública del gist (sin token — el secreto es la URL)
+  const url = `https://gist.githubusercontent.com/${_GIST_USER}/${_GIST_ID}/raw/${_GIST_FILE}`;
+  const r = await fetch(url + '?_=' + Date.now());
+  if (!r.ok) return null;
+  try { return await r.json(); } catch(e) { return null; }
+}
+
+async function _gistWrite(data) {
+  const token = getGistToken();
+  if (!token) return false;
+  const r = await fetch(`https://api.github.com/gists/${_GIST_ID}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `token ${token}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'mecachamps2-app'
+    },
+    body: JSON.stringify({ files: { [_GIST_FILE]: { content: JSON.stringify(data) } } })
+  });
+  return r.ok;
+}
 
 function getData() {
-  try {
-    const raw = localStorage.getItem(DB_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch(e) { return null; }
+  return _data;
 }
 
 function saveData(data) {
-  try {
-    localStorage.setItem(DB_KEY, JSON.stringify(data));
-    return true;
-  } catch(e) {
-    alert('Error al guardar: almacenamiento lleno. Comprime las imágenes.');
-    return false;
-  }
+  _data = data;
+  try { localStorage.setItem(DB_KEY, JSON.stringify(data)); } catch(e) {}
+  _gistWrite(data).then(ok => {
+    if (!ok && getGistToken()) console.warn('Gist write failed — verificá el token');
+  }).catch(err => console.error('Gist write error:', err));
+  return true;
 }
 
 function createId() {
@@ -194,9 +229,19 @@ function teamDT(team) {
   return team.dt || { name: '', photo: null, rating: 70 };
 }
 
-function initializeApp() {
-  let data = getData();
-  if (!data) {
+async function initializeApp() {
+  // Cargar datos: primero Gist (nube), luego localStorage como fallback
+  let data = await _gistRead().catch(() => null);
+  if (!data || data._init) {
+    // Gist vacío o error → intentar localStorage
+    try {
+      const raw = localStorage.getItem(DB_KEY);
+      const local = raw ? JSON.parse(raw) : null;
+      if (local) data = local;
+    } catch(e) {}
+  }
+
+  if (!data || data._init) {
     const primera = Array.from({length: 10}, (_, i) => createDefaultTeam('primera', i + 1));
     const segunda  = Array.from({length: 10}, (_, i) => createDefaultTeam('segunda',  i + 1));
     const pIds = primera.map(t => t.id);
@@ -210,16 +255,17 @@ function initializeApp() {
       },
       news: []
     };
-    saveData(data);
   } else {
     // Migration: any old Array-based copa format → new groups object
     if (Array.isArray(data.matches.copa)) {
       const pIds = data.teams.primera.map(t => t.id);
       const sIds = data.teams.segunda.map(t => t.id);
       data.matches.copa = generateCopaBracket([...pIds, ...sIds]);
-      saveData(data);
     }
   }
+
+  _data = data;
+  saveData(data); // sincroniza Gist + localStorage
   return data;
 }
 
