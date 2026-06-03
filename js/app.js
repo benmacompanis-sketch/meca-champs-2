@@ -686,9 +686,9 @@ function renderTeamPage(teamId) {
         <div class="player-name">${escHtml(dt.name || 'Director Técnico')}</div>
         <div class="player-meta">Director Técnico</div>
         <div class="player-rating-bar">
-          <div class="prb-fill" style="width:${dt.rating || 0}%;background:var(--gold)"></div>
+          <div class="prb-fill" style="width:${dt.rating || 0}%;background:${ratingColor(dt.rating||0)}"></div>
         </div>
-        <div class="player-rating-num" style="color:var(--gold)">${dt.rating || '—'} OVR</div>
+        <div class="player-rating-num" style="color:${ratingColor(dt.rating||0)}">${dt.rating || '—'} OVR <span class="rating-range-tag">${ratingLabel(dt.rating||0)}</span></div>
       </div>
     </div>` : '';
 
@@ -708,9 +708,9 @@ function renderTeamPage(teamId) {
               <div class="player-name">${escHtml(p.name)}</div>
               <div class="player-meta">${escHtml(p.position || 'JUG')}${p.age ? ` · ${p.age} años` : ''}${p.country ? ` · ${escHtml(p.country)}` : ''}</div>
               <div class="player-rating-bar">
-                <div class="prb-fill" style="width:${p.rating}%"></div>
+                <div class="prb-fill" style="width:${p.rating}%;background:${ratingColor(p.rating)}"></div>
               </div>
-              <div class="player-rating-num">${p.rating} OVR</div>
+              <div class="player-rating-num" style="color:${ratingColor(p.rating)}">${p.rating} OVR <span class="rating-range-tag">${ratingLabel(p.rating)}</span></div>
             </div>
           </div>
         `).join('')}
@@ -735,7 +735,8 @@ function renderTeamPage(teamId) {
           <div class="team-page-division">${divisionLabel}</div>
           <h1 class="team-page-name">${escHtml(team.name)}</h1>
           <div class="team-page-rating">
-            <span class="rating-big">${team.rating}</span><span class="rating-ovr-label">OVR</span>
+            <span class="rating-big" style="color:${ratingColor(team.rating)}">${team.rating}</span><span class="rating-ovr-label">OVR</span>
+            <span class="rating-range-badge" style="background:${ratingColor(team.rating)}22;color:${ratingColor(team.rating)};border-color:${ratingColor(team.rating)}55">${ratingLabel(team.rating)}</span>
           </div>
         </div>
       </div>
@@ -777,6 +778,24 @@ function renderTeamPage(teamId) {
 }
 
 // ===== UTILITIES =====
+function ratingColor(r) {
+  if (r >= 90) return '#ffd700';        // oro   — élite
+  if (r >= 85) return '#22c55e';        // verde — muy bueno
+  if (r >= 80) return '#3b82f6';        // azul  — bueno
+  if (r >= 75) return '#a78bfa';        // lila  — normal
+  if (r >= 70) return '#fb923c';        // naranja — bajo
+  return '#6b7280';                     // gris  — muy bajo
+}
+
+function ratingLabel(r) {
+  if (r >= 90) return '+90';
+  if (r >= 85) return '+85';
+  if (r >= 80) return '+80';
+  if (r >= 75) return '+75';
+  if (r >= 70) return '+70';
+  return '<70';
+}
+
 function escHtml(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
