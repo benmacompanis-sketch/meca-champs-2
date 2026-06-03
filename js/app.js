@@ -782,8 +782,8 @@ function ratingColor(r) {
   if (r >= 90) return '#ffd700';        // oro   — élite
   if (r >= 85) return '#22c55e';        // verde — muy bueno
   if (r >= 80) return '#3b82f6';        // azul  — bueno
-  if (r >= 75) return '#a78bfa';        // lila  — normal
-  if (r >= 70) return '#fb923c';        // naranja — bajo
+  if (r >= 75) return '#fb923c';        // naranja — normal
+  if (r >= 70) return '#ef4444';        // rojo  — bajo
   return '#6b7280';                     // gris  — muy bajo
 }
 
