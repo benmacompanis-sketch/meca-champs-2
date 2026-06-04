@@ -781,7 +781,7 @@ function renderTeamPage(teamId) {
             <div class="staff-info">
               <div class="staff-role">${role}</div>
               <div class="staff-name">${escHtml(obj.name || '—')}</div>
-              ${(obj.age || obj.country) ? `<div class="staff-meta">${[obj.age ? obj.age + ' años' : '', escHtml(obj.country||'')].filter(Boolean).join(' · ')}</div>` : ''}
+              ${(() => { const nat = obj.nationality || obj.country || ''; return (obj.age || nat) ? `<div class="staff-meta">${[obj.age ? obj.age + ' años' : '', escHtml(nat)].filter(Boolean).join(' · ')}</div>` : ''; })()}
               ${showRating && obj.rating ? `<div class="staff-rating">${obj.rating} <span>OVR</span></div>` : ''}
             </div>
           </div>`;
