@@ -1141,6 +1141,24 @@ body::after {
   transition: color .3s;
 }
 
+.player-stats-mini {
+  display: flex;
+  gap: .35rem;
+  flex-wrap: wrap;
+  margin-top: .3rem;
+}
+.player-stats-mini span {
+  font-family: 'Orbitron', sans-serif;
+  font-size: .58rem;
+  font-weight: 700;
+  padding: .1rem .3rem;
+  border-radius: 3px;
+}
+.pst-goal   { background: rgba(34,197,94,.15);  color: #22c55e; }
+.pst-assist { background: rgba(59,130,246,.15);  color: #60a5fa; }
+.pst-yellow { background: rgba(234,179,8,.2);    color: #eab308; }
+.pst-red    { background: rgba(239,68,68,.2);    color: #ef4444; }
+
 /* ===== ADMIN PANEL ===== */
 #admin-overlay {
   position: fixed;

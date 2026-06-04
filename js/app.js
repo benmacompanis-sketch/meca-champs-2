@@ -673,6 +673,19 @@ function renderTeamPage(teamId) {
     `;
   })();
 
+  // Acumular stats de todos los torneos para los jugadores de este equipo
+  const playerStats = {};
+  for (const tourn of ['primera', 'segunda', 'copa']) {
+    for (const s of computePlayerStats(tourn)) {
+      if (s.team.id !== teamId) continue;
+      if (!playerStats[s.player.id]) playerStats[s.player.id] = {goals:0, assists:0, yellows:0, reds:0};
+      playerStats[s.player.id].goals   += s.goals;
+      playerStats[s.player.id].assists += s.assists;
+      playerStats[s.player.id].yellows += s.yellows;
+      playerStats[s.player.id].reds    += s.reds;
+    }
+  }
+
   const dt = teamDT(team);
   const dtCard = dt.name || dt.photo ? `
     <div class="player-card player-card-dt">
@@ -711,6 +724,16 @@ function renderTeamPage(teamId) {
                 <div class="prb-fill" style="width:${p.rating}%;background:${ratingColor(p.rating)}"></div>
               </div>
               <div class="player-rating-num" style="color:${ratingColor(p.rating)}">${p.rating} OVR <span class="rating-range-tag">${ratingLabel(p.rating)}</span></div>
+              ${(() => {
+                const st = playerStats[p.id];
+                if (!st) return '';
+                const parts = [];
+                if (st.goals   > 0) parts.push(`<span class="pst-goal">⚽ ${st.goals}</span>`);
+                if (st.assists > 0) parts.push(`<span class="pst-assist">A ${st.assists}</span>`);
+                if (st.yellows > 0) parts.push(`<span class="pst-yellow">▪ ${st.yellows}</span>`);
+                if (st.reds    > 0) parts.push(`<span class="pst-red">▪ ${st.reds}</span>`);
+                return parts.length ? `<div class="player-stats-mini">${parts.join('')}</div>` : '';
+              })()}
             </div>
           </div>
         `).join('')}
