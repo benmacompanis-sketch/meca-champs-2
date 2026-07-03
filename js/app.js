@@ -3,6 +3,11 @@ let currentView = 'home';
 let currentTournamentTab = 'standings';
 let isAdmin = false;
 
+const FACES_BASE = 'https://benmacompanis-sketch.github.io/meca-champs-2/faces';
+function playerPhoto(p) {
+  return p.photo || `${FACES_BASE}/${p.id}.png`;
+}
+
 const TOURNAMENT_NAMES = {
   primera: 'Primera División',
   segunda: 'Segunda División',
@@ -590,9 +595,8 @@ function renderStatsSection(tournament) {
                     <td>${i+1}</td>
                     <td>
                       <a class="player-link" onclick="navigate('team','${s.team.id}')">
-                        ${s.player.photo
-                          ? `<img src="${s.player.photo}" class="player-avatar-sm" alt="">`
-                          : `<div class="avatar-placeholder-sm">${s.player.name.charAt(0)}</div>`}
+                        <img src="${playerPhoto(s.player)}" class="player-avatar-sm" alt=""
+                          onerror="this.outerHTML='<div class=&quot;avatar-placeholder-sm&quot;>${s.player.name.charAt(0)}</div>'">
                         ${escHtml(s.player.name)}
                       </a>
                     </td>
@@ -712,9 +716,8 @@ function renderTeamPage(teamId) {
         ${team.players.map(p => `
           <div class="player-card">
             <div class="player-card-photo">
-              ${p.photo
-                ? `<img src="${p.photo}" alt="${escHtml(p.name)}">`
-                : `<div class="player-photo-placeholder">${p.name.charAt(0)}</div>`}
+              <img src="${playerPhoto(p)}" alt="${escHtml(p.name)}"
+                onerror="this.outerHTML='<div class=&quot;player-photo-placeholder&quot;>${p.name.charAt(0)}</div>'">
               <span class="player-position-badge">${escHtml(p.position || 'JUG')}</span>
             </div>
             <div class="player-card-info">
