@@ -1068,15 +1068,15 @@ body::after {
 
 .player-card-photo {
   position: relative;
-  height: 140px;
+  height: 170px;
   background: var(--bg3);
   overflow: hidden;
 }
 
 .player-card-photo img {
   width: 100%; height: 100%;
-  object-fit: contain;
-  object-position: center bottom;
+  object-fit: cover;
+  object-position: center 15%;
 }
 
 .player-photo-placeholder {
