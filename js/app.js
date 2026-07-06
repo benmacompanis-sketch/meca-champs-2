@@ -685,6 +685,7 @@ function renderTeamPage(teamId) {
 
   // Acumular stats de todos los torneos para los jugadores de este equipo
   const playerStats = {};
+  const playerYellowsByTourn = {};
   for (const tourn of ['primera', 'segunda', 'copa']) {
     for (const s of computePlayerStats(tourn)) {
       if (s.team.id !== teamId) continue;
@@ -693,6 +694,10 @@ function renderTeamPage(teamId) {
       playerStats[s.player.id].assists += s.assists;
       playerStats[s.player.id].yellows += s.yellows;
       playerStats[s.player.id].reds    += s.reds;
+      if (s.yellows > 0) {
+        if (!playerYellowsByTourn[s.player.id]) playerYellowsByTourn[s.player.id] = {};
+        playerYellowsByTourn[s.player.id][tourn] = s.yellows;
+      }
     }
   }
 
@@ -741,8 +746,12 @@ function renderTeamPage(teamId) {
                 const parts = [];
                 if (st.goals   > 0) parts.push(`<span class="pst-goal">⚽ ${st.goals}</span>`);
                 if (st.assists > 0) parts.push(`<span class="pst-assist">A ${st.assists}</span>`);
-                if (st.yellows > 0) parts.push(`<span class="pst-yellow">▪ ${st.yellows}</span>`);
-                if (st.reds    > 0) parts.push(`<span class="pst-red">▪ ${st.reds}</span>`);
+                const yt = playerYellowsByTourn[p.id] || {};
+                const divTourn = team.division;
+                const divLabel = divTourn === 'primera' ? '1ª' : '2ª';
+                if (yt[divTourn]) { const y = yt[divTourn]; parts.push(`<span class="${y % 3 === 2 ? 'pst-yellow-warn' : 'pst-yellow'}">🟡 ${y} ${divLabel}</span>`); }
+                if (yt.copa)      { const y = yt.copa;      parts.push(`<span class="${y % 3 === 2 ? 'pst-yellow-warn' : 'pst-yellow'}">🟡 ${y} Copa</span>`); }
+                if (st.reds    > 0) parts.push(`<span class="pst-red">🟥 ${st.reds}</span>`);
                 return parts.length ? `<div class="player-stats-mini">${parts.join('')}</div>` : '';
               })()}
             </div>

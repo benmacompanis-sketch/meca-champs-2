@@ -913,15 +913,17 @@ function saveMatchResult(tournament, matchId) {
 
   // Procesar suspensiones (roja → 1 partido; cada 3 amarillas → 1 partido)
   if (theMatch) {
-    function countAllYellows(playerId) {
+    function countTournamentYellows(playerId) {
       let cnt = 0;
-      for (const div of ['primera','segunda'])
-        for (const round of data.matches[div])
+      if (tournament === 'copa') {
+        for (const g of data.matches.copa.groups)
+          for (const m of g.matches) { if (!m.played) continue; for (const ev of m.events) if (ev.playerId === playerId && ev.type === 'yellow') cnt++; }
+        for (const round of data.matches.copa.knockout)
           for (const m of round) { if (!m.played) continue; for (const ev of m.events) if (ev.playerId === playerId && ev.type === 'yellow') cnt++; }
-      for (const g of data.matches.copa.groups)
-        for (const m of g.matches) { if (!m.played) continue; for (const ev of m.events) if (ev.playerId === playerId && ev.type === 'yellow') cnt++; }
-      for (const round of data.matches.copa.knockout)
-        for (const m of round) { if (!m.played) continue; for (const ev of m.events) if (ev.playerId === playerId && ev.type === 'yellow') cnt++; }
+      } else {
+        for (const round of data.matches[tournament])
+          for (const m of round) { if (!m.played) continue; for (const ev of m.events) if (ev.playerId === playerId && ev.type === 'yellow') cnt++; }
+      }
       return cnt;
     }
     const allPlayers = {};
@@ -935,7 +937,7 @@ function saveMatchResult(tournament, matchId) {
         newlySuspended.add(ev.playerId);
       }
       if (ev.type === 'yellow') {
-        const total = countAllYellows(ev.playerId);
+        const total = countTournamentYellows(ev.playerId);
         if (total > 0 && total % 3 === 0) {
           player.suspension = { matches: 1, reason: 'yellow' };
           newlySuspended.add(ev.playerId);
