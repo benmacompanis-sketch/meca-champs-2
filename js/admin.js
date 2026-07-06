@@ -933,13 +933,15 @@ function saveMatchResult(tournament, matchId) {
       const player = allPlayers[ev.playerId];
       if (!player) continue;
       if (ev.type === 'red') {
-        player.suspension = { matches: 1, reason: 'red' };
+        if (!player.suspension || typeof player.suspension.matches === 'number') player.suspension = {};
+        player.suspension[tournament] = { matches: 1, reason: 'red' };
         newlySuspended.add(ev.playerId);
       }
       if (ev.type === 'yellow') {
         const total = countTournamentYellows(ev.playerId);
         if (total > 0 && total % 3 === 0) {
-          player.suspension = { matches: 1, reason: 'yellow' };
+          if (!player.suspension || typeof player.suspension.matches === 'number') player.suspension = {};
+          player.suspension[tournament] = { matches: 1, reason: 'yellow' };
           newlySuspended.add(ev.playerId);
         }
       }
@@ -949,9 +951,14 @@ function saveMatchResult(tournament, matchId) {
         if (!involvedTeams.includes(team.id)) continue;
         for (const player of team.players) {
           if (newlySuspended.has(player.id)) continue;
-          if (player.suspension && player.suspension.matches > 0) {
+          if (!player.suspension) continue;
+          if (typeof player.suspension.matches === 'number') {
             player.suspension.matches -= 1;
             if (player.suspension.matches <= 0) delete player.suspension;
+          } else if (player.suspension[tournament]) {
+            player.suspension[tournament].matches -= 1;
+            if (player.suspension[tournament].matches <= 0) delete player.suspension[tournament];
+            if (Object.keys(player.suspension).length === 0) delete player.suspension;
           }
         }
       }

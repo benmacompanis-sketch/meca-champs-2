@@ -11,7 +11,14 @@ function isInjured(p) {
   return p.injury && p.injury.matches > 0;
 }
 function isSuspended(p) {
-  return p.suspension && p.suspension.matches > 0;
+  if (!p.suspension) return false;
+  if (typeof p.suspension.matches === 'number') return p.suspension.matches > 0;
+  return ['primera','segunda','copa'].some(t => p.suspension[t] && p.suspension[t].matches > 0);
+}
+function getSuspensionForTournament(p, t) {
+  if (!p.suspension) return null;
+  if (typeof p.suspension.matches === 'number') return p.suspension.matches > 0 ? p.suspension : null;
+  return (p.suspension[t] && p.suspension[t].matches > 0) ? p.suspension[t] : null;
 }
 
 const TOURNAMENT_NAMES = {
@@ -603,7 +610,7 @@ function renderStatsSection(tournament) {
                       <a class="player-link" onclick="navigate('team','${s.team.id}')">
                         <img src="${playerPhoto(s.player)}" class="player-avatar-sm" alt=""
                           onerror="this.outerHTML='<div class=&quot;avatar-placeholder-sm&quot;>${s.player.name.charAt(0)}</div>'">
-                        ${escHtml(s.player.name)}${isInjured(s.player) ? ' <span class="injury-tag">🚑</span>' : ''}${isSuspended(s.player) ? ` <span class="suspension-tag">${s.player.suspension.reason === 'red' ? '🟥' : '🟡'}</span>` : ''}
+                        ${escHtml(s.player.name)}${isInjured(s.player) ? ' <span class="injury-tag">🚑</span>' : ''}${(() => { const susp = getSuspensionForTournament(s.player, tournament); return susp ? ` <span class="suspension-tag">${susp.reason === 'red' ? '🟥' : '🟡'}</span>` : ''; })()}
                       </a>
                     </td>
                     <td><a class="team-link-sm" onclick="navigate('team','${s.team.id}')">${escHtml(s.team.name)}</a></td>
@@ -731,7 +738,7 @@ function renderTeamPage(teamId) {
                 onerror="this.outerHTML='<div class=&quot;player-photo-placeholder&quot;>${p.name.charAt(0)}</div>'">
               <span class="player-position-badge">${escHtml(p.position || 'JUG')}</span>
               ${isInjured(p) ? `<div class="injury-badge">🚑 ${p.injury.matches}p</div>` : ''}
-              ${isSuspended(p) ? `<div class="suspension-badge">${p.suspension.reason === 'red' ? '🟥' : '🟡'} ${p.suspension.matches}p</div>` : ''}
+              ${(() => { const divS = getSuspensionForTournament(p, team.division); const copS = getSuspensionForTournament(p, 'copa'); const susp = divS || copS; if (!susp) return ''; return `<div class="suspension-badge">${susp.reason === 'red' ? '🟥' : '🟡'} ${susp.matches}p${!divS && copS ? ' Copa' : ''}</div>`; })()}
             </div>
             <div class="player-card-info">
               <div class="player-name">${escHtml(p.name)}</div>
