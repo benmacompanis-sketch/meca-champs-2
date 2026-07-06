@@ -805,15 +805,17 @@ function makeEventRow(ev, i, allPlayers) {
   const playerOptions = allPlayers.map(p =>
     `<option value="${p.id}" data-team="${p.teamId}" ${p.id === ev.playerId ? 'selected' : ''}>${escHtml(p.name)} (${escHtml(p.teamName)})</option>`
   ).join('');
+  const isInj = ev.type === 'injury';
   return `
     <div class="event-row" id="ev-${i}">
-      <select class="ev-type">
-        ${['goal','assist','yellow','red'].map(t =>
-          `<option value="${t}" ${ev.type===t?'selected':''}>${t==='goal'?'⚽ Gol':t==='assist'?'🎯 Asistencia':t==='yellow'?'🟨 Amarilla':'🟥 Roja'}</option>`
+      <select class="ev-type" onchange="toggleInjuryField(this)">
+        ${['goal','assist','yellow','red','injury'].map(t =>
+          `<option value="${t}" ${ev.type===t?'selected':''}>${t==='goal'?'⚽ Gol':t==='assist'?'🎯 Asistencia':t==='yellow'?'🟨 Amarilla':t==='red'?'🟥 Roja':'🚑 Lesión'}</option>`
         ).join('')}
       </select>
       <select class="ev-player">${playerOptions}</select>
       <input type="number" class="ev-minute" placeholder="Min." min="1" max="120" value="${ev.minute||''}">
+      <input type="number" class="ev-matches" placeholder="Partidos" min="1" max="30" value="${ev.matchesOut||1}" style="width:80px;display:${isInj?'inline-block':'none'}">
       <button class="btn-danger btn-sm" onclick="this.closest('.event-row').remove()">✕</button>
     </div>
   `;
@@ -830,17 +832,24 @@ function addEventRow() {
   div.className = 'event-row';
   div.id = `ev-${i}`;
   div.innerHTML = `
-    <select class="ev-type">
+    <select class="ev-type" onchange="toggleInjuryField(this)">
       <option value="goal">⚽ Gol</option>
       <option value="assist">🎯 Asistencia</option>
       <option value="yellow">🟨 Amarilla</option>
       <option value="red">🟥 Roja</option>
+      <option value="injury">🚑 Lesión</option>
     </select>
     <select class="ev-player">${playerOptions}</select>
     <input type="number" class="ev-minute" placeholder="Min." min="1" max="120">
+    <input type="number" class="ev-matches" placeholder="Partidos" min="1" max="30" value="1" style="width:80px;display:none">
     <button class="btn-danger btn-sm" onclick="this.closest('.event-row').remove()">✕</button>
   `;
   container.appendChild(div);
+}
+
+function toggleInjuryField(select) {
+  const row = select.closest('.event-row');
+  row.querySelector('.ev-matches').style.display = select.value === 'injury' ? 'inline-block' : 'none';
 }
 
 function saveMatchResult(tournament, matchId) {
@@ -853,31 +862,57 @@ function saveMatchResult(tournament, matchId) {
   }
 
   const events = [];
+  const newInjuries = [];
   document.querySelectorAll('#events-list .event-row').forEach(row => {
     const type = row.querySelector('.ev-type').value;
     const playerSel = row.querySelector('.ev-player');
     const playerId = playerSel.value;
     const teamId = playerSel.selectedOptions[0]?.dataset.team;
     const minute = parseInt(row.querySelector('.ev-minute').value) || 0;
-    if (playerId && teamId) events.push({ type, playerId, teamId, minute });
+    if (!playerId || !teamId) return;
+    if (type === 'injury') {
+      const matchesOut = parseInt(row.querySelector('.ev-matches').value) || 1;
+      newInjuries.push({ playerId, matchesOut });
+      events.push({ type, playerId, teamId, minute, matchesOut });
+    } else {
+      events.push({ type, playerId, teamId, minute });
+    }
   });
 
   const data = getData();
-  const setResult = m => { m.played = true; m.homeScore = homeScore; m.awayScore = awayScore; m.events = events; };
+
+  // Encontrar el partido para obtener los IDs de equipos
+  let theMatch = null;
   if (tournament === 'copa') {
     const copa = data.matches.copa;
-    let found = false;
-    for (const g of copa.groups) { for (const m of g.matches) { if (m.id === matchId) { setResult(m); found = true; break; } } if (found) break; }
-    if (!found) for (const round of copa.knockout) { for (const m of round) { if (m.id === matchId) { setResult(m); found = true; break; } } if (found) break; }
-    advanceCupKnockout(data);
-    saveData(data);
+    for (const g of copa.groups) { for (const m of g.matches) { if (m.id === matchId) { theMatch = m; break; } } if (theMatch) break; }
+    if (!theMatch) for (const round of copa.knockout) { for (const m of round) { if (m.id === matchId) { theMatch = m; break; } } if (theMatch) break; }
   } else {
-    for (const round of data.matches[tournament])
-      for (const m of round)
-        if (m.id === matchId) { setResult(m); break; }
-    saveData(data);
+    for (const round of data.matches[tournament]) for (const m of round) { if (m.id === matchId) { theMatch = m; } }
   }
 
+  if (theMatch) { theMatch.played = true; theMatch.homeScore = homeScore; theMatch.awayScore = awayScore; theMatch.events = events; }
+
+  // Procesar lesiones
+  const involvedTeams = theMatch ? [theMatch.homeTeamId, theMatch.awayTeamId] : [];
+  const newInjuryIds = new Set(newInjuries.map(i => i.playerId));
+  for (const div of ['primera','segunda']) {
+    for (const team of data.teams[div]) {
+      if (!involvedTeams.includes(team.id)) continue;
+      for (const player of team.players) {
+        const inj = newInjuries.find(i => i.playerId === player.id);
+        if (inj) {
+          player.injury = { matches: inj.matchesOut };
+        } else if (player.injury && player.injury.matches > 0) {
+          player.injury.matches -= 1;
+          if (player.injury.matches <= 0) delete player.injury;
+        }
+      }
+    }
+  }
+
+  if (tournament === 'copa') advanceCupKnockout(data);
+  saveData(data);
   alert('✅ Resultado guardado. Tablas actualizadas.');
   document.getElementById('match-result-editor').innerHTML = '';
   loadAdminMatches();
