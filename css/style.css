@@ -1105,6 +1105,29 @@ body::after {
   margin-left: 4px;
   vertical-align: middle;
 }
+.player-suspended { opacity: 0.72; }
+.suspension-badge {
+  position: absolute;
+  top: 6px; right: 6px;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 3;
+  letter-spacing: .03em;
+}
+.suspension-tag {
+  display: inline-block;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 0.68rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
 
 .dt-card-img {
   width: 100% !important;

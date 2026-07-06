@@ -911,6 +911,51 @@ function saveMatchResult(tournament, matchId) {
     }
   }
 
+  // Procesar suspensiones (roja → 1 partido; cada 3 amarillas → 1 partido)
+  if (theMatch) {
+    function countAllYellows(playerId) {
+      let cnt = 0;
+      for (const div of ['primera','segunda'])
+        for (const round of data.matches[div])
+          for (const m of round) { if (!m.played) continue; for (const ev of m.events) if (ev.playerId === playerId && ev.type === 'yellow') cnt++; }
+      for (const g of data.matches.copa.groups)
+        for (const m of g.matches) { if (!m.played) continue; for (const ev of m.events) if (ev.playerId === playerId && ev.type === 'yellow') cnt++; }
+      for (const round of data.matches.copa.knockout)
+        for (const m of round) { if (!m.played) continue; for (const ev of m.events) if (ev.playerId === playerId && ev.type === 'yellow') cnt++; }
+      return cnt;
+    }
+    const allPlayers = {};
+    for (const div of ['primera','segunda']) for (const team of data.teams[div]) for (const p of team.players) allPlayers[p.id] = p;
+    const newlySuspended = new Set();
+    for (const ev of events) {
+      const player = allPlayers[ev.playerId];
+      if (!player) continue;
+      if (ev.type === 'red') {
+        player.suspension = { matches: 1, reason: 'red' };
+        newlySuspended.add(ev.playerId);
+      }
+      if (ev.type === 'yellow') {
+        const total = countAllYellows(ev.playerId);
+        if (total > 0 && total % 3 === 0) {
+          player.suspension = { matches: 1, reason: 'yellow' };
+          newlySuspended.add(ev.playerId);
+        }
+      }
+    }
+    for (const div of ['primera','segunda']) {
+      for (const team of data.teams[div]) {
+        if (!involvedTeams.includes(team.id)) continue;
+        for (const player of team.players) {
+          if (newlySuspended.has(player.id)) continue;
+          if (player.suspension && player.suspension.matches > 0) {
+            player.suspension.matches -= 1;
+            if (player.suspension.matches <= 0) delete player.suspension;
+          }
+        }
+      }
+    }
+  }
+
   if (tournament === 'copa') advanceCupKnockout(data);
   saveData(data);
   alert('✅ Resultado guardado. Tablas actualizadas.');
