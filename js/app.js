@@ -695,7 +695,7 @@ function renderTeamPage(teamId) {
     <div class="player-card player-card-dt">
       <div class="player-card-photo">
         ${dt.photo
-          ? `<img src="${dt.photo}" alt="${escHtml(dt.name)}">`
+          ? `<img src="${dt.photo}" alt="${escHtml(dt.name)}" class="dt-card-img">`
           : `<div class="player-photo-placeholder">${(dt.name||'DT').charAt(0)}</div>`}
         <span class="player-position-badge" style="background:var(--gold);color:#000">DT</span>
       </div>
