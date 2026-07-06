@@ -354,8 +354,10 @@ async function resizeImage(dataUrl, maxW, maxH, q = 0.82) {
       w = Math.round(w * ratio); h = Math.round(h * ratio);
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(c.toDataURL('image/jpeg', q));
+      const ctx2d = c.getContext('2d');
+      ctx2d.drawImage(img, 0, 0, w, h);
+      const isPng = dataUrl.startsWith('data:image/png');
+      resolve(isPng ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', q));
     };
     img.src = dataUrl;
   });
