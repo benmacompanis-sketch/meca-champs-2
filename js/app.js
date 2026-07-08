@@ -205,19 +205,25 @@ function renderCupGroups() {
           </tr>`;
         }).join('')}</tbody>
       </table>`;
-    // Agrupar partidos por fecha (ningún equipo juega dos veces en la misma jornada)
-    const unassigned = [...group.matches];
-    const fechas = [];
-    while (unassigned.length > 0) {
-      const fecha = [], used = new Set(), rest = [];
-      for (const m of unassigned) {
-        if (!used.has(m.homeTeamId) && !used.has(m.awayTeamId)) {
-          fecha.push(m); used.add(m.homeTeamId); used.add(m.awayTeamId);
-        } else { rest.push(m); }
+    // Asignar cada partido a su fecha real usando el algoritmo de Berger
+    const bergerTeams = [...group.teamIds];
+    if (bergerTeams.length % 2 !== 0) bergerTeams.push(null);
+    const bn = bergerTeams.length;
+    const roundOf = {};
+    for (let r = 0; r < bn - 1; r++) {
+      for (let i = 0; i < bn / 2; i++) {
+        const h = bergerTeams[i], a = bergerTeams[bn - 1 - i];
+        if (h && a) { roundOf[`${h}|${a}`] = r; roundOf[`${a}|${h}`] = r; }
       }
-      fechas.push(fecha);
-      unassigned.splice(0, unassigned.length, ...rest);
+      bergerTeams.splice(1, 0, bergerTeams.pop());
     }
+    const roundBuckets = [];
+    for (const m of group.matches) {
+      const r = roundOf[`${m.homeTeamId}|${m.awayTeamId}`] ?? 0;
+      if (!roundBuckets[r]) roundBuckets[r] = [];
+      roundBuckets[r].push(m);
+    }
+    const fechas = roundBuckets.filter(Boolean);
 
     const matchRow = m => {
       const home = getTeamById(m.homeTeamId), away = getTeamById(m.awayTeamId);
