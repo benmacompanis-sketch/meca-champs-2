@@ -785,7 +785,6 @@ function renderTeamPage(teamId) {
           <h1 class="team-page-name">${escHtml(team.name)}</h1>
           <div class="team-page-rating">
             ${starsHtml(team.rating, 'stars-lg')}
-            <span class="rating-ovr-label">${team.rating} OVR</span>
           </div>
         </div>
       </div>
