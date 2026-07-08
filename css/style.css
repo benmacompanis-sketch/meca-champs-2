@@ -1829,15 +1829,23 @@ body::after {
   border-bottom: 1px solid var(--border);
 }
 .grp-qualify-note { font-size: .7rem; color: var(--text-dim); letter-spacing: .03em; }
-.grp-body {
+.grp-grid {
   display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+@media (max-width: 750px) { .grp-grid { grid-template-columns: 1fr; } }
+
+.grp-body {
+  display: none;
   grid-template-columns: 1fr 1fr;
   gap: 0;
 }
 @media (max-width: 680px) {
   .grp-body { grid-template-columns: 1fr; }
 }
-.grp-table-wrap { overflow-x: auto; border-right: 1px solid var(--border); }
+.grp-table-wrap { overflow-x: auto; }
 .grp-table {
   width: 100%;
   border-collapse: collapse;
@@ -1866,8 +1874,21 @@ body::after {
 .grp-pts { font-family: 'Orbitron', sans-serif; font-weight: 700; color: var(--cyan); }
 .grp-pts-hd { color: var(--cyan) !important; }
 
-.grp-matches-wrap { overflow-y: auto; max-height: 260px; padding: .3rem 0; }
-.grp-matches-wrap .fixture-match { padding: .35rem .75rem; font-size: .78rem; }
+.grp-matches-wrap { border-top: 1px solid var(--border); padding: .25rem 0; }
+.grp-match {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .28rem .75rem;
+}
+.grp-match:hover { background: rgba(255,255,255,.03); }
+.grp-match-team { display: flex; align-items: center; gap: .3rem; flex: 1; min-width: 0; }
+.grp-match-away { flex-direction: row-reverse; }
+.grp-match-shield { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
+.grp-match-name { font-size: .75rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-score {
+  font-family: 'Orbitron', sans-serif; font-size: .72rem;
+  color: var(--text-dim); min-width: 2.8rem; text-align: center; flex-shrink: 0;
+}
+.gm-played { color: var(--cyan); font-weight: 700; }
 
 /* ===== VISUAL BRACKET ===== */
 .bracket-wrap {
@@ -1929,7 +1950,7 @@ body::after {
   right: -8px;
   top: 25%;
   height: 50%;
-  border-right: 2px solid var(--border2);
+  border-right: 2px solid rgba(0,212,255,.35);
   pointer-events: none;
 }
 
@@ -1941,7 +1962,7 @@ body::after {
   top: 50%;
   width: 16px;
   height: 2px;
-  background: var(--border2);
+  background: rgba(0,212,255,.35);
   pointer-events: none;
 }
 
@@ -1969,7 +1990,7 @@ body::after {
   top: 50%;
   width: 8px;
   height: 2px;
-  background: var(--border2);
+  background: rgba(0,212,255,.35);
   pointer-events: none;
 }
 
@@ -1984,7 +2005,7 @@ body::after {
   top: 50%;
   width: 24px;
   height: 2px;
-  background: var(--border2);
+  background: rgba(0,212,255,.35);
   pointer-events: none;
 }
 

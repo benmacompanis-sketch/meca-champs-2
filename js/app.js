@@ -182,7 +182,7 @@ function renderCopa() {
 
 function renderCupGroups() {
   const copa = getData().matches.copa;
-  return copa.groups.map(group => {
+  return `<div class="grp-grid">${copa.groups.map(group => {
     const standings = computeGroupStandings(group);
     const tableHtml = `
       <table class="grp-table">
@@ -207,26 +207,27 @@ function renderCupGroups() {
       </table>`;
     const matchesHtml = group.matches.map(m => {
       const home = getTeamById(m.homeTeamId), away = getTeamById(m.awayTeamId);
-      return `<div class="fixture-match ${m.played ? 'fm-played' : ''}">
-        <div class="fm-team fm-home">
-          ${home?.shield ? `<img src="${home.shield}" class="fm-shield" alt="">` : ''}
-          <span>${escHtml(home?.name||'?')}</span>
+      const scoreHtml = m.played
+        ? `<span class="gm-score gm-played">${m.homeScore} - ${m.awayScore}</span>`
+        : `<span class="gm-score">vs</span>`;
+      return `<div class="grp-match">
+        <div class="grp-match-team">
+          ${home?.shield ? `<img src="${home.shield}" class="grp-match-shield" alt="">` : `<div class="bk-ini">${home?.name?.charAt(0)||'?'}</div>`}
+          <span class="grp-match-name">${escHtml(home?.name||'?')}</span>
         </div>
-        <div class="fm-score">${m.played ? `${m.homeScore} - ${m.awayScore}` : 'vs'}</div>
-        <div class="fm-team fm-away">
-          <span>${escHtml(away?.name||'?')}</span>
-          ${away?.shield ? `<img src="${away.shield}" class="fm-shield" alt="">` : ''}
+        ${scoreHtml}
+        <div class="grp-match-team grp-match-away">
+          <span class="grp-match-name">${escHtml(away?.name||'?')}</span>
+          ${away?.shield ? `<img src="${away.shield}" class="grp-match-shield" alt="">` : `<div class="bk-ini">${away?.name?.charAt(0)||'?'}</div>`}
         </div>
       </div>`;
     }).join('');
     return `<div class="grp-section">
       <div class="grp-header">GRUPO ${group.id} <span class="grp-qualify-note">· clasifican top 2</span></div>
-      <div class="grp-body">
-        <div class="grp-table-wrap">${tableHtml}</div>
-        <div class="grp-matches-wrap">${matchesHtml}</div>
-      </div>
+      <div class="grp-table-wrap">${tableHtml}</div>
+      <div class="grp-matches-wrap">${matchesHtml}</div>
     </div>`;
-  }).join('');
+  }).join('')}</div>`;
 }
 
 function renderCupKnockout() {
