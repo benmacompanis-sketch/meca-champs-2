@@ -959,8 +959,21 @@ body::after {
   font-size: .7rem;
   letter-spacing: .2em;
   color: var(--text-dim);
-  margin-left: .3rem;
+  margin-left: .4rem;
+  vertical-align: middle;
 }
+
+.team-stars { display: inline-flex; gap: 1px; line-height: 1; vertical-align: middle; }
+.team-stars .star-f { color: #f59e0b; }
+.team-stars .star-h {
+  background: linear-gradient(90deg, #f59e0b 50%, #4b5563 50%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.team-stars .star-e { color: #4b5563; }
+.team-stars.stars-lg { font-size: 1.9rem; gap: 2px; }
+.team-card-rating .team-stars { font-size: 1.05rem; }
 
 .rating-range-badge {
   display: inline-block;

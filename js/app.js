@@ -649,8 +649,7 @@ function renderEquipos() {
           <div class="team-card-info">
             <div class="team-card-name">${escHtml(t.name)}</div>
             <div class="team-card-rating">
-              <span class="rating-badge">${t.rating}</span>
-              <span class="rating-label">OVR</span>
+              ${starsHtml(t.rating)}
             </div>
             ${teamDT(t).name ? `<div class="team-card-pres">DT: ${escHtml(teamDT(t).name)}</div>` : ''}
             <div class="team-card-players">${t.players.length} jugadores</div>
@@ -785,8 +784,8 @@ function renderTeamPage(teamId) {
           <div class="team-page-division">${divisionLabel}</div>
           <h1 class="team-page-name">${escHtml(team.name)}</h1>
           <div class="team-page-rating">
-            <span class="rating-big" style="color:${ratingColor(team.rating)}">${team.rating}</span><span class="rating-ovr-label">OVR</span>
-            <span class="rating-range-badge" style="background:${ratingColor(team.rating)}22;color:${ratingColor(team.rating)};border-color:${ratingColor(team.rating)}55">${ratingLabel(team.rating)}</span>
+            ${starsHtml(team.rating, 'stars-lg')}
+            <span class="rating-ovr-label">${team.rating} OVR</span>
           </div>
         </div>
       </div>
@@ -844,6 +843,28 @@ function ratingLabel(r) {
   if (r >= 75) return '+75';
   if (r >= 70) return '+70';
   return '<70';
+}
+
+function ratingToStars(r) {
+  if (r >= 82) return 5.0;
+  if (r >= 80) return 4.5;
+  if (r >= 78) return 4.0;
+  if (r >= 76) return 3.5;
+  if (r >= 74) return 3.0;
+  if (r >= 72) return 2.5;
+  if (r >= 70) return 2.0;
+  return 1.5;
+}
+function starsHtml(r, cls) {
+  const s = ratingToStars(r);
+  const full = Math.floor(s);
+  const half = s % 1 !== 0;
+  const empty = 5 - full - (half ? 1 : 0);
+  return `<span class="team-stars${cls ? ' ' + cls : ''}">` +
+    '<span class="star-f">★</span>'.repeat(full) +
+    (half ? '<span class="star-h">★</span>' : '') +
+    '<span class="star-e">★</span>'.repeat(empty) +
+    '</span>';
 }
 
 function escHtml(s) {
