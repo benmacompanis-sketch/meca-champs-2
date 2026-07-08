@@ -1884,6 +1884,13 @@ body::after {
 .grp-match-away { flex-direction: row-reverse; }
 .grp-match-shield { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
 .grp-match-name { font-size: .75rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grp-fecha-hdr {
+  font-family: 'Orbitron', sans-serif;
+  font-size: .6rem; letter-spacing: .1em;
+  color: var(--text-dim);
+  padding: .35rem .75rem .15rem;
+  margin-top: .2rem;
+}
 .gm-score {
   font-family: 'Orbitron', sans-serif; font-size: .72rem;
   color: var(--text-dim); min-width: 2.8rem; text-align: center; flex-shrink: 0;

@@ -205,7 +205,21 @@ function renderCupGroups() {
           </tr>`;
         }).join('')}</tbody>
       </table>`;
-    const matchesHtml = group.matches.map(m => {
+    // Agrupar partidos por fecha (ningún equipo juega dos veces en la misma jornada)
+    const unassigned = [...group.matches];
+    const fechas = [];
+    while (unassigned.length > 0) {
+      const fecha = [], used = new Set(), rest = [];
+      for (const m of unassigned) {
+        if (!used.has(m.homeTeamId) && !used.has(m.awayTeamId)) {
+          fecha.push(m); used.add(m.homeTeamId); used.add(m.awayTeamId);
+        } else { rest.push(m); }
+      }
+      fechas.push(fecha);
+      unassigned.splice(0, unassigned.length, ...rest);
+    }
+
+    const matchRow = m => {
       const home = getTeamById(m.homeTeamId), away = getTeamById(m.awayTeamId);
       const scoreHtml = m.played
         ? `<span class="gm-score gm-played">${m.homeScore} - ${m.awayScore}</span>`
@@ -221,7 +235,11 @@ function renderCupGroups() {
           ${away?.shield ? `<img src="${away.shield}" class="grp-match-shield" alt="">` : `<div class="bk-ini">${away?.name?.charAt(0)||'?'}</div>`}
         </div>
       </div>`;
-    }).join('');
+    };
+
+    const matchesHtml = fechas.map((fecha, i) =>
+      `<div class="grp-fecha-hdr">Fecha ${i + 1}</div>${fecha.map(matchRow).join('')}`
+    ).join('');
     return `<div class="grp-section">
       <div class="grp-header">GRUPO ${group.id} <span class="grp-qualify-note">· clasifican top 2</span></div>
       <div class="grp-table-wrap">${tableHtml}</div>
