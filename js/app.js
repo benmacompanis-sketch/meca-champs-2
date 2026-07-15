@@ -260,13 +260,13 @@ function renderCupKnockout() {
   const knockout = copa.knockout; // [qf[4], sf[2], final[1], third[1]]
   const flatK = knockout.flat();
 
-  function bkTeamRow(team, fromGroup, fromPos, fromTie, fromLoser, isWin, score, played) {
+  function bkTeamRow(team, fromGroup, fromPos, fromTie, fromLoser, isWin, score, played, isHome) {
     if (team) {
       const shield = team.shield
         ? `<img src="${team.shield}" class="bk-shield" alt="">`
         : `<div class="bk-ini">${team.name.charAt(0)}</div>`;
       return `<div class="bk-team ${isWin ? 'bk-win' : played ? 'bk-lose' : ''}">
-        ${shield}<span class="bk-name">${escHtml(team.name)}</span>
+        ${shield}<span class="bk-name">${escHtml(team.name)}</span>${isHome ? '<span class="bk-locality">L</span>' : ''}
         ${played ? `<span class="bk-sc ${isWin ? 'bk-sc-win' : ''}">${score}</span>` : ''}
       </div>`;
     }
@@ -293,9 +293,9 @@ function renderCupKnockout() {
     const p = m.played, hW = p && m.homeScore > m.awayScore, aW = p && m.awayScore > m.homeScore;
     const isDraw = p && m.homeScore === m.awayScore;
     return `<div class="bk-match ${isDraw ? 'bk-draw' : ''}">
-      ${bkTeamRow(home, m.homeFromGroup, m.homeFromPos, m.homeFromTie, m.homeFromLoser, hW, m.homeScore, p)}
+      ${bkTeamRow(home, m.homeFromGroup, m.homeFromPos, m.homeFromTie, m.homeFromLoser, hW, m.homeScore, p, true)}
       <div class="bk-sep"></div>
-      ${bkTeamRow(away, m.awayFromGroup, m.awayFromPos, m.awayFromTie, m.awayFromLoser, aW, m.awayScore, p)}
+      ${bkTeamRow(away, m.awayFromGroup, m.awayFromPos, m.awayFromTie, m.awayFromLoser, aW, m.awayScore, p, false)}
       ${isDraw ? '<div class="bk-draw-note">⚠ Empate</div>' : ''}
     </div>`;
   }
@@ -581,11 +581,17 @@ function renderMatchCard(match, tournament) {
         ${home.shield
           ? `<img src="${home.shield}" class="match-shield" alt="">`
           : `<div class="shield-placeholder-md">${home.name.charAt(0)}</div>`}
-        <span class="match-team-name">${escHtml(home.name)}</span>
+        <div class="match-team-name-wrap">
+          <span class="match-team-name">${escHtml(home.name)}</span>
+          <span class="locality-tag loc-home">LOCAL</span>
+        </div>
       </div>
       ${scoreHtml}
       <div class="match-team away-team">
-        <span class="match-team-name">${escHtml(away.name)}</span>
+        <div class="match-team-name-wrap match-team-name-wrap-away">
+          <span class="match-team-name">${escHtml(away.name)}</span>
+          <span class="locality-tag loc-away">VISITA</span>
+        </div>
         ${away.shield
           ? `<img src="${away.shield}" class="match-shield" alt="">`
           : `<div class="shield-placeholder-md">${away.name.charAt(0)}</div>`}

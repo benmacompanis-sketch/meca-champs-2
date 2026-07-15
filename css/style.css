@@ -660,6 +660,19 @@ body::after {
 
 .match-team-name { font-size: .88rem; }
 
+.match-team-name-wrap {
+  display: flex; flex-direction: column; align-items: flex-start;
+}
+.match-team-name-wrap-away { align-items: flex-end; }
+
+.locality-tag {
+  font-size: .55rem; font-weight: 700;
+  letter-spacing: .06em; padding: .1rem .3rem;
+  border-radius: 3px; line-height: 1.5; margin-top: 2px;
+}
+.loc-home { background: rgba(0,212,255,.15); color: var(--cyan); }
+.loc-away { background: rgba(248,113,113,.12); color: #f87171; }
+
 .match-score {
   font-family: 'Orbitron', sans-serif;
   font-size: 1.4rem;
@@ -2056,6 +2069,11 @@ body::after {
   color: var(--text);
 }
 .bk-tbd-txt { color: var(--text-dim); font-size: .7rem; font-weight: 400; }
+.bk-locality {
+  font-size: .52rem; font-weight: 700; letter-spacing: .05em;
+  background: rgba(0,212,255,.15); color: var(--cyan);
+  padding: .08rem .28rem; border-radius: 3px; margin-left: 2px; flex-shrink: 0;
+}
 
 .bk-sc {
   font-family: 'Orbitron', sans-serif;
