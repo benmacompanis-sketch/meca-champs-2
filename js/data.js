@@ -176,13 +176,27 @@ function advanceCupKnockout(data) {
     standings.forEach((s, i) => { groupPos[`${g.id}${i+1}`] = s.teamId; });
   }
 
-  const winnerOf = {}, loserOf = {};
+  // Group by tieId to compute aggregate winner (ida + vuelta)
+  const tieMap = {};
   for (const m of knockout) {
-    if (m.played && m.homeTeamId && m.awayTeamId) {
-      if (m.homeScore > m.awayScore) {
-        winnerOf[m.tieId] = m.homeTeamId; loserOf[m.tieId] = m.awayTeamId;
-      } else if (m.awayScore > m.homeScore) {
-        winnerOf[m.tieId] = m.awayTeamId; loserOf[m.tieId] = m.homeTeamId;
+    if (!tieMap[m.tieId]) tieMap[m.tieId] = [];
+    tieMap[m.tieId].push(m);
+  }
+
+  const winnerOf = {}, loserOf = {};
+  for (const [tieId, matches] of Object.entries(tieMap)) {
+    const ida    = matches.find(m => m.leg === 'ida');
+    const vuelta = matches.find(m => m.leg === 'vuelta');
+    if (ida && vuelta && ida.played && vuelta.played && ida.homeTeamId && ida.awayTeamId) {
+      const aGoals = (ida.homeScore || 0) + (vuelta.awayScore || 0);
+      const bGoals = (ida.awayScore || 0) + (vuelta.homeScore || 0);
+      if (aGoals > bGoals) { winnerOf[tieId] = ida.homeTeamId; loserOf[tieId] = ida.awayTeamId; }
+      else if (bGoals > aGoals) { winnerOf[tieId] = ida.awayTeamId; loserOf[tieId] = ida.homeTeamId; }
+    } else if (matches.length === 1) {
+      const m = matches[0];
+      if (m.played && m.homeTeamId && m.awayTeamId) {
+        if (m.homeScore > m.awayScore) { winnerOf[tieId] = m.homeTeamId; loserOf[tieId] = m.awayTeamId; }
+        else if (m.awayScore > m.homeScore) { winnerOf[tieId] = m.awayTeamId; loserOf[tieId] = m.homeTeamId; }
       }
     }
   }
@@ -265,7 +279,7 @@ async function initializeApp() {
   }
 
   _data = data;
-  saveData(data); // sincroniza Gist + localStorage
+  try { localStorage.setItem(DB_KEY, JSON.stringify(data)); } catch(e) {}
   return data;
 }
 

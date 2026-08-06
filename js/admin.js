@@ -704,12 +704,13 @@ function loadAdminMatches() {
     const home = match.homeTeamId ? getTeamById(match.homeTeamId) : null;
     const away = match.awayTeamId ? getTeamById(match.awayTeamId) : null;
 
+    const legTag = match.leg ? `<span class="amr-leg">${match.leg.toUpperCase()}</span>` : '';
     if (match.pending || !home || !away) {
       const hn = home ? escHtml(home.name) : '(A definir)';
       const an = away ? escHtml(away.name) : '(A definir)';
       return `
         <div class="admin-match-row admin-match-tbd">
-          <span class="amr-home">${hn}</span>
+          ${legTag}<span class="amr-home">${hn}</span>
           <span class="amr-score">vs</span>
           <span class="amr-away">${an}</span>
           <span class="amr-pending">PENDIENTE</span>
@@ -720,7 +721,7 @@ function loadAdminMatches() {
     const played = match.played;
     return `
       <div class="admin-match-row ${played ? 'match-done' : ''}">
-        <span class="amr-home">${escHtml(home.name)}</span>
+        ${legTag}<span class="amr-home">${escHtml(home.name)}</span>
         <span class="amr-score">${played ? `${match.homeScore} - ${match.awayScore}` : 'vs'}</span>
         <span class="amr-away">${escHtml(away.name)}</span>
         <button class="btn-primary btn-sm" onclick="openMatchEditor('${tournament}','${match.id}')">

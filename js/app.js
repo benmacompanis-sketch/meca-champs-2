@@ -149,6 +149,72 @@ function closeNewsModal() {
   document.getElementById('news-modal').classList.add('hidden');
 }
 
+// ===== PLAYER MODAL =====
+function openPlayerModal(teamId, playerId) {
+  const team = getTeamById(teamId);
+  if (!team) return;
+  const p = team.players.find(x => x.id === playerId);
+  if (!p) return;
+
+  const stats = { goals: 0, assists: 0, yellows: 0, reds: 0 };
+  for (const tourn of ['primera', 'segunda', 'copa']) {
+    for (const s of computePlayerStats(tourn)) {
+      if (s.player.id !== playerId) continue;
+      stats.goals   += s.goals;
+      stats.assists += s.assists;
+      stats.yellows += s.yellows;
+      stats.reds    += s.reds;
+    }
+  }
+
+  let modal = document.getElementById('player-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'player-modal';
+    modal.className = 'modal hidden';
+    modal.innerHTML = `
+      <div class="modal-overlay" onclick="closePlayerModal()"></div>
+      <div class="modal-box pm-box" id="player-modal-box"></div>`;
+    document.body.appendChild(modal);
+  }
+
+  const injHtml  = isInjured(p)   ? `<div class="pm-badge pm-injury">🚑 Lesionado ${p.injury.matches}p</div>` : '';
+  const suspHtml = isSuspended(p) ? (() => {
+    const divS = getSuspensionForTournament(p, team.division);
+    const copS = getSuspensionForTournament(p, 'copa');
+    const susp = divS || copS;
+    return susp ? `<div class="pm-badge pm-susp">${susp.reason==='red'?'🟥':'🟡'} Suspendido ${susp.matches}p${!divS&&copS?' Copa':''}</div>` : '';
+  })() : '';
+
+  const statsHtml = [
+    stats.goals   > 0 ? `<div class="pm-stat"><span class="pm-sv">⚽ ${stats.goals}</span><span class="pm-sl">Goles</span></div>` : '',
+    stats.assists > 0 ? `<div class="pm-stat"><span class="pm-sv">🎯 ${stats.assists}</span><span class="pm-sl">Asist.</span></div>` : '',
+    stats.yellows > 0 ? `<div class="pm-stat"><span class="pm-sv">🟡 ${stats.yellows}</span><span class="pm-sl">Amarillas</span></div>` : '',
+    stats.reds    > 0 ? `<div class="pm-stat"><span class="pm-sv">🟥 ${stats.reds}</span><span class="pm-sl">Rojas</span></div>` : '',
+  ].filter(Boolean).join('');
+
+  document.getElementById('player-modal-box').innerHTML = `
+    <button class="modal-close" onclick="closePlayerModal()">✕</button>
+    <div class="pm-photo-wrap">
+      <img src="${playerPhoto(p)}" alt="${escHtml(p.name)}" class="pm-photo"
+        onerror="this.style.display='none'">
+    </div>
+    <div class="pm-position-tag">${escHtml(p.position || 'JUG')}</div>
+    <div class="pm-name">${escHtml(p.name)}</div>
+    <div class="pm-meta">${[p.age ? p.age+' años' : '', escHtml(p.country||'')].filter(Boolean).join(' · ')}</div>
+    <div class="pm-rating-bar"><div class="prb-fill" style="width:${p.rating}%;background:${ratingColor(p.rating)}"></div></div>
+    <div class="pm-rating-num" style="color:${ratingColor(p.rating)}">${p.rating} OVR <span class="rating-range-tag">${ratingLabel(p.rating)}</span></div>
+    ${injHtml}${suspHtml}
+    ${statsHtml ? `<div class="pm-stats-row">${statsHtml}</div>` : ''}
+  `;
+  modal.classList.remove('hidden');
+}
+
+function closePlayerModal() {
+  const m = document.getElementById('player-modal');
+  if (m) m.classList.add('hidden');
+}
+
 // ===== TOURNAMENT VIEW =====
 function renderTournament(tournament) {
   const name = TOURNAMENT_NAMES[tournament];
@@ -257,7 +323,7 @@ function renderCupGroups() {
 
 function renderCupKnockout() {
   const copa = getData().matches.copa;
-  const knockout = copa.knockout; // [qf[4], sf[2], final[1], third[1]]
+  const knockout = copa.knockout;
   const flatK = knockout.flat();
 
   function bkTeamRow(team, fromGroup, fromPos, fromTie, fromLoser, isWin, score, played, isHome) {
@@ -274,12 +340,12 @@ function renderCupKnockout() {
     if (fromGroup) {
       label = `${fromPos === 1 ? '1°' : '2°'} Grupo ${fromGroup}`;
     } else if (fromTie) {
-      const src = flatK.find(m => m.tieId === fromTie);
+      const src = flatK.find(m => m.tieId === fromTie && m.leg === 'ida');
       const t1 = src?.homeTeamId ? getTeamById(src.homeTeamId) : null;
       const t2 = src?.awayTeamId ? getTeamById(src.awayTeamId) : null;
       if (t1 && t2) label = `Gan. ${escHtml(t1.name)} / ${escHtml(t2.name)}`;
     } else if (fromLoser) {
-      const src = flatK.find(m => m.tieId === fromLoser);
+      const src = flatK.find(m => m.tieId === fromLoser && m.leg === 'ida');
       const t1 = src?.homeTeamId ? getTeamById(src.homeTeamId) : null;
       const t2 = src?.awayTeamId ? getTeamById(src.awayTeamId) : null;
       if (t1 && t2) label = `Perd. ${escHtml(t1.name)} / ${escHtml(t2.name)}`;
@@ -287,37 +353,89 @@ function renderCupKnockout() {
     return `<div class="bk-team bk-tbd"><span class="bk-name bk-tbd-txt">${label}</span></div>`;
   }
 
-  function bkMatch(m) {
+  function groupByTie(round) {
+    const order = [], map = {};
+    for (const m of round) {
+      if (!map[m.tieId]) { map[m.tieId] = { tieId: m.tieId, matches: [] }; order.push(m.tieId); }
+      map[m.tieId].matches.push(m);
+    }
+    return order.map(id => map[id]);
+  }
+
+  function tieWinnerId(tieGroup) {
+    const ida    = tieGroup.matches.find(m => m.leg === 'ida');
+    const vuelta = tieGroup.matches.find(m => m.leg === 'vuelta');
+    if (!ida?.played || !vuelta?.played) return null;
+    const aGoals = (ida.homeScore || 0) + (vuelta.awayScore || 0);
+    const bGoals = (ida.awayScore || 0) + (vuelta.homeScore || 0);
+    if (aGoals > bGoals) return ida.homeTeamId;
+    if (bGoals > aGoals) return ida.awayTeamId;
+    return null;
+  }
+
+  function bkLeg(m) {
     const home = m.homeTeamId ? getTeamById(m.homeTeamId) : null;
     const away = m.awayTeamId ? getTeamById(m.awayTeamId) : null;
-    const p = m.played, hW = p && m.homeScore > m.awayScore, aW = p && m.awayScore > m.homeScore;
+    const p = m.played;
+    const hW = p && m.homeScore > m.awayScore;
+    const aW = p && m.awayScore > m.homeScore;
     const isDraw = p && m.homeScore === m.awayScore;
     return `<div class="bk-match ${isDraw ? 'bk-draw' : ''}">
       ${bkTeamRow(home, m.homeFromGroup, m.homeFromPos, m.homeFromTie, m.homeFromLoser, hW, m.homeScore, p, true)}
       <div class="bk-sep"></div>
       ${bkTeamRow(away, m.awayFromGroup, m.awayFromPos, m.awayFromTie, m.awayFromLoser, aW, m.awayScore, p, false)}
-      ${isDraw ? '<div class="bk-draw-note">⚠ Empate</div>' : ''}
+    </div>`;
+  }
+
+  function bkTie(tieGroup) {
+    const ida    = tieGroup.matches.find(m => m.leg === 'ida');
+    const vuelta = tieGroup.matches.find(m => m.leg === 'vuelta');
+    let aggHtml = '';
+    if (ida?.played && vuelta?.played) {
+      const aGoals = (ida.homeScore || 0) + (vuelta.awayScore || 0);
+      const bGoals = (ida.awayScore || 0) + (vuelta.homeScore || 0);
+      const aTeam  = ida.homeTeamId ? getTeamById(ida.homeTeamId) : null;
+      const bTeam  = ida.awayTeamId ? getTeamById(ida.awayTeamId) : null;
+      const isDraw = aGoals === bGoals;
+      const winner = aGoals > bGoals ? aTeam : bGoals > aGoals ? bTeam : null;
+      aggHtml = `<div class="bk-agg">
+        <span class="bk-agg-lbl">GLOBAL</span>
+        <span class="bk-agg-score">${aGoals}-${bGoals}</span>
+        ${isDraw
+          ? '<span class="bk-agg-note bk-agg-draw">Iguales</span>'
+          : winner ? `<span class="bk-agg-note">${escHtml(winner.name)}</span>` : ''}
+      </div>`;
+    }
+    return `<div class="bk-tie">
+      <div class="bk-leg-hdr">IDA</div>
+      ${ida ? bkLeg(ida) : ''}
+      <div class="bk-leg-hdr bk-leg-hdr-vta">VUELTA</div>
+      ${vuelta ? bkLeg(vuelta) : ''}
+      ${aggHtml}
     </div>`;
   }
 
   const [qf, semis, final_, third] = knockout;
-  const finalWinner = final_[0]?.played
-    ? getTeamById(final_[0].homeScore > final_[0].awayScore ? final_[0].homeTeamId : final_[0].awayTeamId)
-    : null;
-  const thirdWinner = third[0]?.played
-    ? getTeamById(third[0].homeScore > third[0].awayScore ? third[0].homeTeamId : third[0].awayTeamId)
-    : null;
+  const qfTies    = groupByTie(qf);
+  const sfTies    = groupByTie(semis);
+  const finalTies = groupByTie(final_);
+  const thirdTies = groupByTie(third);
+
+  const finalWinnerId = tieWinnerId(finalTies[0]);
+  const finalWinner   = finalWinnerId ? getTeamById(finalWinnerId) : null;
+  const thirdWinnerId = tieWinnerId(thirdTies[0]);
+  const thirdWinner   = thirdWinnerId ? getTeamById(thirdWinnerId) : null;
 
   const qfCol = `<div class="bk-col bk-col-r1">
     <div class="bk-col-hdr">CUARTOS DE FINAL</div>
     <div class="bk-col-body">
       <div class="bk-pair">
-        <div class="bk-slot">${bkMatch(qf[0])}</div>
-        <div class="bk-slot">${bkMatch(qf[1])}</div>
+        <div class="bk-slot">${bkTie(qfTies[0])}</div>
+        <div class="bk-slot">${bkTie(qfTies[1])}</div>
       </div>
       <div class="bk-pair">
-        <div class="bk-slot">${bkMatch(qf[2])}</div>
-        <div class="bk-slot">${bkMatch(qf[3])}</div>
+        <div class="bk-slot">${bkTie(qfTies[2])}</div>
+        <div class="bk-slot">${bkTie(qfTies[3])}</div>
       </div>
     </div>
   </div>`;
@@ -326,8 +444,8 @@ function renderCupKnockout() {
     <div class="bk-col-hdr">SEMIFINAL</div>
     <div class="bk-col-body">
       <div class="bk-pair">
-        <div class="bk-slot">${bkMatch(semis[0])}</div>
-        <div class="bk-slot">${bkMatch(semis[1])}</div>
+        <div class="bk-slot">${bkTie(sfTies[0])}</div>
+        <div class="bk-slot">${bkTie(sfTies[1])}</div>
       </div>
     </div>
   </div>`;
@@ -336,7 +454,7 @@ function renderCupKnockout() {
     <div class="bk-col-hdr">🏆 FINAL</div>
     <div class="bk-col-body">
       <div class="bk-pair bk-pair-final">
-        <div class="bk-slot">${bkMatch(final_[0])}</div>
+        <div class="bk-slot">${bkTie(finalTies[0])}</div>
       </div>
     </div>
   </div>`;
@@ -361,7 +479,7 @@ function renderCupKnockout() {
         <div class="bk-col-hdr">PARTIDO POR 3°</div>
         <div class="bk-col-body">
           <div class="bk-pair bk-pair-final">
-            <div class="bk-slot">${bkMatch(third[0])}</div>
+            <div class="bk-slot">${bkTie(thirdTies[0])}</div>
           </div>
         </div>
       </div>
@@ -763,7 +881,7 @@ function renderTeamPage(teamId) {
     : `<div class="players-grid">
         ${dtCard}
         ${team.players.map(p => `
-          <div class="player-card${isInjured(p) ? ' player-injured' : ''}${isSuspended(p) ? ' player-suspended' : ''}">
+          <div class="player-card${isInjured(p) ? ' player-injured' : ''}${isSuspended(p) ? ' player-suspended' : ''}" onclick="openPlayerModal('${team.id}','${p.id}')" style="cursor:pointer">
             <div class="player-card-photo">
               <img src="${playerPhoto(p)}" alt="${escHtml(p.name)}"
                 onerror="this.outerHTML='<div class=&quot;player-photo-placeholder&quot;>${p.name.charAt(0)}</div>'">
